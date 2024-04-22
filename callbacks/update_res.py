@@ -49,7 +49,7 @@ dataset = [
 def update_histogram(n):
     m = n%4
     data = dataset[m]['data']
-    fig = px.bar(x=data.keys(), y=data.values(), labels={'x': '', 'y':'count'}, text_auto='.2s')
+    fig = px.bar(x=data.keys(), y=data.values(), labels={'x': '', 'y':'count'}, text_auto=True)
     
     candidates = dataset[m]['candidates']
     times = dataset[m]['times']
