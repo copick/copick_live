@@ -57,9 +57,9 @@ def update_histogram(n):
     def item(i, j):
         return  dbc.ListGroupItem("Test_{:03d} (labeled {} times)".format(i, j))
     
-    num_per_person_ordered = dataset[n%3]['num_per_person_ordered']
+    num_per_person_ordered = dataset[m]['num_per_person_ordered']
     label = f'Labeled {dataset[m]["counts"]} out of 1000 tomograms'
-    bar_val = dataset[n%4]['counts']/1000*100
+    bar_val = dataset[m]['counts']/1000*100
 
     def item2(i, j):
         return  dbc.ListGroupItem("{} {} tomograms".format(i, j))
