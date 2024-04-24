@@ -1,7 +1,7 @@
 import plotly.express as px
 import dash_bootstrap_components as dbc
 
-from utils.data_utils import Dataset
+from utils.data_utils import dataset
 from dash import (
     Input,
     Output,
@@ -26,18 +26,18 @@ def ranking_list(i, j):
     Input('interval-component', 'n_intervals')
 )
 def update_histogram(n):
-    dataset = Dataset('./assets/copick_config_default.json')
     dataset.refresh()
     data = dataset.fig_data()
+    #print(data)
     fig = px.bar(x=data['name'], 
                  y=data['count'], 
-                 labels={'x': '', 'y':'count'}, 
+                 labels={'x': '', 'y':'# of people picked'}, 
                  text_auto=True,
                  color = data['colors'],
                  )
     fig.update(layout_showlegend=False)
     candidates = dataset.candidates(10) 
-
+    #print(f'candidates\n{candidates}')
     num_per_person_ordered = dataset.num_per_person_ordered 
     label = f'Labeled {len(dataset.tomos_picked)} out of 1000 tomograms'
     bar_val = len(dataset.tomos_picked)/1000*100

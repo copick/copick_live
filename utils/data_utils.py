@@ -1,7 +1,11 @@
-import random, json, copy
-from copick.impl.filesystem import CopickRootFSSpec
+import random, json, copy, configparser, os
 from collections import defaultdict
+from copick.impl.filesystem import CopickRootFSSpec
 
+
+config = configparser.ConfigParser()
+config.read(os.path.join(os.getcwd(), "config.ini"))
+COPICK_CONFIG_PATH = './%s' % config['copick']['COPICK_CONFIG_PATH']
 
 class Dataset:
     def __init__(self, config_path: str=None):
@@ -37,7 +41,7 @@ class Dataset:
         
     
     def refresh(self):
-        self.root = CopickRootFSSpec.from_file(self.config_path)
+        self.root.refresh()
         self._update_tomo_sts()
 
     
@@ -47,13 +51,16 @@ class Dataset:
         proteins = defaultdict(int) 
         tomos_one_pick = set() 
         
-        for run in self.root.runs[1:]:  # TS_001
+        for run in self.root.runs:  # TS_001_1 -> 2 spacings -> processings
             self.tomos_picked[run.name] = len(run.picks)
             if len(run.picks) == 1: # seems always have .name in the pick?
                 tomos_one_pick.add(int(run.name))
             
             for pick in run.picks:
-                file = pick.load()
+                try:
+                    file = pick.load()
+                except:
+                    continue
                 proteins[file.pickable_object_name] += 1
                 tomos_per_person[file.user_id].append(file.run_name)
         
@@ -67,7 +74,6 @@ class Dataset:
 
 
     def _update_candidates(self, n):
-        times = []
         for candidate in self.candidate_dict.keys():
             candidate_key = 'Test_{:03d}'.format(candidate)
             if candidate_key in self.tomos_picked and self.tomos_picked[candidate_key] >= 2:
@@ -102,4 +108,4 @@ class Dataset:
         return image_dataset
 
 
-            
+dataset = Dataset(COPICK_CONFIG_PATH)

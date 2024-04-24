@@ -20,7 +20,7 @@ browser_cache =html.Div(
         children=[
             dcc.Interval(
             id='interval-component',
-            interval=2*1000, # in milliseconds
+            interval=1000*1000, # in milliseconds
             n_intervals=0
         )
         ],
