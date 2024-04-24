@@ -12,14 +12,15 @@ class Dataset:
         self.config_path = config_path
         self.root = CopickRootFSSpec.from_file(self.config_path) if self.config_path else None
         self.tomos_picked = defaultdict(int)   #{'Test_001': 2, ...}
-        self.tomos_per_person = defaultdict(list) #{'Tom': ['Test_001', 'Test_002'], ..}
+        self.tomos_per_person = defaultdict(set) #{'Tom': {'Test_001', 'Test_002'}, ..}
         self.num_per_person_ordered = dict() # {'Tom':5, 'Julie':3, ...}
         self.proteins = defaultdict(int) # {'ribosome': 38, ...}
         
         self.all = set([i for i in range(1000)])
         self.tomos_one_pick = set() # {0, 1, 2, ...}
         self.candidate_dict = dict() # {1:1, 2:0, ...}
-    
+
+        self.prepicks = set(['slab-picking', 'pytom-template-match', 'relion-refinement']) 
         with open(self.config_path) as f:
             config = json.load(f)
 
@@ -46,14 +47,14 @@ class Dataset:
 
     
     def _update_tomo_sts(self):
-        tomos_per_person = defaultdict(list) 
+        tomos_per_person = defaultdict(set) 
         num_per_person = dict() 
         proteins = defaultdict(int) 
         tomos_one_pick = set() 
         
         for run in self.root.runs:  # TS_001_1 -> 2 spacings -> processings
             self.tomos_picked[run.name] = len(run.picks)
-            if len(run.picks) == 1: # seems always have .name in the pick?
+            if len(run.picks) == 1: 
                 tomos_one_pick.add(int(run.name))
             
             for pick in run.picks:
@@ -61,8 +62,10 @@ class Dataset:
                     file = pick.load()
                 except:
                     continue
-                proteins[file.pickable_object_name] += 1
-                tomos_per_person[file.user_id].append(file.run_name)
+                
+                if file.user_id not in self.prepicks:
+                    tomos_per_person[file.user_id].add(file.run_name)
+                    proteins[file.pickable_object_name] += 1
         
         self.proteins = proteins
         self.tomos_per_person = tomos_per_person
@@ -70,7 +73,8 @@ class Dataset:
         
         for p,l in self.tomos_per_person.items():
             num_per_person[p] = len(l)
-        self.num_per_person_ordered = dict(sorted(num_per_person.items(), key=lambda item: item[1]))
+        # sort reverse alphabetically if tomogram count is the same
+        self.num_per_person_ordered = dict(sorted(num_per_person.items(), key=lambda item: item[1], reverse=True))
 
 
     def _update_candidates(self, n):
