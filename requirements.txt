@@ -1,6 +1,6 @@
 dash==2.13.0
 plotly==5.17.0
-pandas==2.0.2
+pandas
 dash-extensions==1.0.1
 dash-bootstrap-components==1.5.0
 dash-iconify==0.1.2
@@ -8,3 +8,5 @@ dash-iconify==0.1.2
 #dash-table==5.0.0
 Flask==2.2.5
 numpy
+git+https://github.com/uermel/copick.git
+smbprotocol

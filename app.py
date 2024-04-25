@@ -1,5 +1,4 @@
 import os
-
 import dash_bootstrap_components as dbc
 from dash import Dash, html, dcc
 
@@ -21,11 +20,12 @@ browser_cache =html.Div(
         children=[
             dcc.Interval(
             id='interval-component',
-            interval=2*1000, # in milliseconds
+            interval=10*1000, # in milliseconds, 10s
             n_intervals=0
         )
         ],
     )
+
 
 app.layout = html.Div(
     [
@@ -56,4 +56,4 @@ app.layout = html.Div(
 
 
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8050, debug=False)
+    app.run_server(host="0.0.0.0", port=8050, debug=True)
