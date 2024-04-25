@@ -1,11 +1,19 @@
 import random, json, copy, configparser, os
 from collections import defaultdict
 from copick.impl.filesystem import CopickRootFSSpec
+import json
 
 
 config = configparser.ConfigParser()
 config.read(os.path.join(os.getcwd(), "config.ini"))
 COPICK_CONFIG_PATH = './%s' % config['copick']['COPICK_CONFIG_PATH']
+COUNTER_FILE_PATH = '%s' % config['counter']['COUNTER_FILE_PATH'] #absolute path
+
+id2key = ['TS_'+str(i)+'_'+str(j) for i in range(1, 122) for j in range(1,10)]
+key2id = {j:i for i,j in enumerate(id2key)}
+with open(COPICK_CONFIG_PATH) as f:
+    copick_config_file = json.load(f)
+
 
 class Dataset:
     def __init__(self, config_path: str=None):
@@ -20,7 +28,7 @@ class Dataset:
         self.tomos_one_pick = set() # {0, 1, 2, ...}
         self.candidate_dict = dict() # {1:1, 2:0, ...}
 
-        self.prepicks = set(['slab-picking', 'pytom-template-match', 'relion-refinement']) 
+        self.prepicks = set(['slab-picking', 'pytom-template-match', 'relion-refinement', 'prepick', 'ArtiaX', 'default']) 
         with open(self.config_path) as f:
             config = json.load(f)
 
@@ -73,13 +81,13 @@ class Dataset:
         
         for p,l in self.tomos_per_person.items():
             num_per_person[p] = len(l)
-        # sort reverse alphabetically if tomogram count is the same
+        # sort counter-alphabetically if tomogram count is the same
         self.num_per_person_ordered = dict(sorted(num_per_person.items(), key=lambda item: item[1], reverse=True))
 
 
-    def _update_candidates(self, n):
+    def _update_candidates(self, n, random_sampling=True):
         for candidate in self.candidate_dict.keys():
-            candidate_key = 'Test_{:03d}'.format(candidate)
+            candidate_key = id2key[candidate]
             if candidate_key in self.tomos_picked and self.tomos_picked[candidate_key] >= 2:
                 del self.candidate_dict[candidate]
         
@@ -92,12 +100,16 @@ class Dataset:
         if len(self.candidate_dict) < n:
             k = n - len(self.candidate_dict) 
             residuals = self.all - set([int(i.split('_')[1]) for i in self.tomos_picked.keys()])
-            for j in random.choices(list(residuals), k=k):
-                self.candidate_dict[j] = 0
+            if random_sampling:
+                for j in random.choices(list(residuals), k=k):
+                    self.candidate_dict[j] = 0
+            else:
+                for j in list(residuals)[:k]:
+                    self.candidate_dict[j] = 0
 
 
-    def candidates(self, n: int) -> dict:
-        self._update_candidates(n)
+    def candidates(self, n: int, random_sampling=True) -> dict:
+        self._update_candidates(n, random_sampling)
         return self.candidate_dict
     
     
