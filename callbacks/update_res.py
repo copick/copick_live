@@ -83,8 +83,7 @@ def update_histogram(n):
                  color = data['colors'],
                  )
     fig.update(layout_showlegend=False)
-    candidates = dataset.candidates(10, random_sampling=False) 
-    #print(f'candidates\n{candidates}')
+    candidates = dataset.candidates(10, random_sampling=False)
     num_per_person_ordered = dataset.num_per_person_ordered 
     label = f'Labeled {len(dataset.tomos_picked)} out of 1000 tomograms'
     bar_val = len(dataset.tomos_picked)/1000*100

@@ -1,3 +1,4 @@
+from dash import dcc, html
 import dash_bootstrap_components as dbc
 from dash_iconify import DashIconify
 
@@ -8,6 +9,10 @@ def layout():
                                         ], 
                                         style={"font-weight": "bold"}
                                         ),
-                        dbc.CardBody(id='rank'),
+                        dcc.Loading(
+                            id="loading-annotators",
+                            children=[html.Div([dbc.CardBody(id='rank'),])],
+                            type="circle",
+                        )
                     ],
                     style={"height": '100%'})
