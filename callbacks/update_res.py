@@ -2,7 +2,7 @@ import plotly.express as px
 import dash_bootstrap_components as dbc
 import json
 
-from utils.data_utils import dataset, copick_config_file, id2key, COUNTER_FILE_PATH
+from utils.data_utils_threading import dataset, copick_config_file, dirs, COUNTER_FILE_PATH
 from dash import (
     Input,
     Output,
@@ -11,7 +11,7 @@ from dash import (
 )
 
 def candidate_list(i, j):
-    return  dbc.ListGroupItem("{} (labeled {} times)".format(id2key[i], j))
+    return  dbc.ListGroupItem("{} (labeled {} times)".format(dirs[i], j))
 
 def ranking_list(i, j):
     return  dbc.ListGroupItem("{} {} tomograms".format(i, j))
@@ -54,7 +54,7 @@ def download_txt(json_data, input_value):
         counter['repeat'] = 0
 
     counter['repeat'] += 1
-    task_contents = '\n'.join(id2key[counter['start']:counter['start']+counter['tasks_per_person']])
+    task_contents = '\n'.join(dirs[counter['start']:counter['start']+counter['tasks_per_person']])
     task_filename = 'task_recommendation_' + '_'.join(input_value.split('.')) + '.txt' 
 
     with open(COUNTER_FILE_PATH, 'w') as f:
@@ -75,10 +75,9 @@ def download_txt(json_data, input_value):
 def update_histogram(n):
     dataset.refresh()
     data = dataset.fig_data()
-    #print(data)
     fig = px.bar(x=data['name'], 
                  y=data['count'], 
-                 labels={'x': '', 'y':'# of people picked'}, 
+                 labels={'x': '', 'y':'Counts'}, 
                  text_auto=True,
                  color = data['colors'],
                  )
@@ -90,7 +89,7 @@ def update_histogram(n):
     
     return fig, \
            dbc.ListGroup([candidate_list(i, j) for i, j in candidates.items()], flush=True), \
-           dbc.ListGroup([ranking_list(i, j) for i, j in num_per_person_ordered.items()], numbered=True), \
+           dbc.ListGroup([ranking_list(i, len(j)) for i, j in num_per_person_ordered.items()], numbered=True), \
            [label], \
            bar_val, \
            f'{bar_val}%'

@@ -8,11 +8,6 @@ instructions = [dcc.Markdown('''
                         1. Download and install [ChimeraX](https://www.cgl.ucsf.edu/chimerax/download.html) version 1.7.0+
                         2. Download the [copick plugin](https://cxtoolshed.rbvi.ucsf.edu/apps/chimeraxcopick)
                         3. Open ChimeraX and install the copick wheel by typing in the command line: `toolshed install /path/to/your/ChimeraX_copick-0.1.3-py3-none-any.whl` 
-
-                        #### Cellcanvas
-                        1. Install [album](https://docs.album.solutions/en/latest/installation-instructions.html) in your python enviroment 
-                        2. [Cellcanvas 0.0.7 instructions](https://album.solutions/guide?catalog_url=https://github.com/cellcanvas/album-catalog&catalog_name=cellcanvas&group=copick&name=cellcanvas-copick-macos&version=0.0.7).\
-                         Note: you might notice an error but it actually works.
                         
                         #### Configuration files
                         Auto-generate the copick configuration file and a tomogram recomendation list for you (5 tomograms per file).    

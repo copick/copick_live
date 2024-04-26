@@ -20,7 +20,7 @@ browser_cache =html.Div(
         children=[
             dcc.Interval(
             id='interval-component',
-            interval=10*1000, # in milliseconds, 10s
+            interval=20*1000, # in milliseconds, 10s
             n_intervals=0
         )
         ],
@@ -56,4 +56,4 @@ app.layout = html.Div(
 
 
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8050, debug=True)
+    app.run_server(host="0.0.0.0", port=8000, debug=False)
