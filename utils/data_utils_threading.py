@@ -29,10 +29,30 @@ def threaded(fn):
     return wrapper
 
 
+def fig_data(config):
+        xdata = []
+        colors = []
+        labels = dict()
+        for po in config["pickable_objects"]:
+            if po["name"] == "background":
+                continue
+            xdata.append(po["name"])
+            colors.append(po["color"])
+            labels[po["name"]] = po["label"]
+
+        im_dataset = {'name': xdata, 
+                      'count': [0]*len(xdata), 
+                      'labels': labels, 
+                      'colors': colors
+                    }
+        return im_dataset
+
+
 class Dataset:
     def __init__(self, local_file_path: str=None, config_path: str=None):
         self.root = local_file_path
-        self.config_path = config_path
+        with open(config_path) as f:
+            self.config_file = json.load(f)
         
         self.proteins = defaultdict(int) # {'ribosome': 38, ...}
         self.tomograms = defaultdict(set)  #{'TS_1_1':{'ribosome', ...}, ...}
@@ -49,15 +69,37 @@ class Dataset:
         self.candidate_dict = defaultdict() # {1:1, 2:0, ...}
         self.candidate_dict_new = defaultdict() #{1:1, 2:0, ...}
         self.prepicks = set(['slab-picking', 'pytom-template-match', 'relion-refinement', 'prepick', 'ArtiaX', 'default']) 
-        
-        # prepare image dataset
-        with open(self.config_path) as f:
-            config = json.load(f)
 
         xdata = []
         colors = []
         labels = dict()
-        for po in config["pickable_objects"]:
+        for po in self.config_file["pickable_objects"]:
+            if po["name"] == "background":
+                continue
+            xdata.append(po["name"])
+            colors.append(po["color"])
+            labels[po["name"]] = po["label"]
+
+        self.im_dataset = {'name': xdata, 
+                           'count': [0]*len(xdata), 
+                           'labels': labels, 
+                           'colors': colors
+                          }
+
+    def _reset(self):
+        self.proteins = defaultdict(int) 
+        self.tomograms = defaultdict(set) 
+        self.tomos_per_person = defaultdict(set) 
+        self.tomos_pickers = defaultdict(set)
+        self.tomos_picked = defaultdict(int)   
+        self.num_per_person_ordered = dict()
+        self.candidate_dict = defaultdict() 
+        self.candidate_dict_new = defaultdict() 
+
+        xdata = []
+        colors = []
+        labels = dict()
+        for po in self.config_file["pickable_objects"]:
             if po["name"] == "background":
                 continue
             xdata.append(po["name"])
@@ -72,6 +114,7 @@ class Dataset:
         
     
     def refresh(self):
+        self._reset()
         self._update_tomo_sts()
 
     @threaded
