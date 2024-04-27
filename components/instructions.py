@@ -26,7 +26,7 @@ instructions = [dcc.Markdown('''
             dcc.Markdown('''
                         ### Particle picking 
                         The default workflow for ChimeraX should be:  
-                        1. Command line: copick start /path/to/config  
+                        1. Command line: `copick start /path/to/config`. It takes about 2-3 mins to load the dataset.  
                         2. Open a tomogram by navigating the tree and double-clicking  
                         3. Select or double click a pre-picked list from the upper table (double click will load the list)   
                         4. Press the ▼ ▼ ▼ button to copy the contents to the "editable" lower table  
