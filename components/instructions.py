@@ -2,7 +2,7 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 instructions = [dcc.Markdown('''
-                        Thanks for participating in the pickathon! We highly encourage labeling all the 6 types of prteins in the tomogram.
+                        Thanks for participating in CZII Pickathon! We highly encourage labeling all the 6 types of prteins in the tomogram.
                         ### Tools installation
                         #### ChimeraX
                         1. Download and install [ChimeraX](https://www.cgl.ucsf.edu/chimerax/download.html) version 1.7.0+
@@ -26,12 +26,11 @@ instructions = [dcc.Markdown('''
             dcc.Markdown('''
                         ### Particle picking 
                         The default workflow for ChimeraX should be:  
-                        1. Command line: `copick start /path/to/config`. It takes about 2-3 mins to load the dataset.  
-                        2. Open a tomogram by navigating the tree and double-clicking  
-                        3. Select or double click a pre-picked list from the upper table (double click will load the list)   
-                        4. Press the ▼ ▼ ▼ button to copy the contents to the "editable" lower table  
-                        5. Start editing away  
-                        6. Change tomogram to save (i should make a button to do this, so people are more comfortable)  
+                        1. Type the command `copick start /path/to/config`. It will take about 2-3 mins to load the entire dataset tree.  
+                        2. Open a tomogram by navigating the tree and double-clicking.  
+                        3. Select or double click a pre-picked list from the upper table (double click will load the list).    
+                        4. Press the ▼ ▼ ▼ button to copy the contents to the "editable" lower table.  
+                        5. Select the Copick tab at the top right corner and choose a tool in the `Place Particles` session. Start editing by right click. Your picking results will be automatically saved.  
                          ''')
 
     ]
