@@ -8,7 +8,7 @@ Installation: `pip install -r requirements.txt`. Need 2 files, see example below
 **A copick configuration json file template**  
 See [copick example](https://github.com/uermel/copick).
 
-**A json checkpoint file** 
+**A json checkpoint file**     
 An example:  
 ```
 {  
