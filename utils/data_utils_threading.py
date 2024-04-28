@@ -36,7 +36,7 @@ class Dataset:
         self.proteins = defaultdict(int) # {'ribosome': 38, ...}
         self.tomograms = defaultdict(set)  #{'TS_1_1':{'ribosome', ...}, ...}
         self.tomos_per_person = defaultdict(set) #{'john.doe':{'TS_1_1',...},...} 
-        self.tomos_pickers = defaultdict(set)   #{'Test_001': {john.doe,...}, ...}
+        self.tomos_pickers = defaultdict(set)   #{'Test_1_1': {john.doe,...}, ...}
         self.num_per_person_ordered = dict() # {'Tom':5, 'Julie':3, ...}
         
         # hidden variables for updating candidate recomendations 
@@ -93,12 +93,12 @@ class Dataset:
                 for json_file in pathlib.Path(dir_path).glob('*.json'):
                     contents = json.load(open(json_file))
                     if 'user_id' in contents and contents['user_id'] not in self._prepicks:
-                        if 'run_name' in contents and 'pickable_object_name' in contents:
-                            self.tomos_per_person[contents['user_id']].add(contents['run_name'])
-                            self.tomograms[contents['run_name']].add(contents['pickable_object_name']) 
-                            self.tomos_pickers[contents['run_name']].add(contents['user_id'])
-                        if 'points' in contents and contents['points']:
-                            self.proteins[contents['pickable_object_name']] += len(contents['points'])
+                        if 'run_name' in contents and 'pickable_object_name' in contents and\
+                           'points' in contents and contents['points'] and len(contents['points']):
+                                self.tomos_per_person[contents['user_id']].add(contents['run_name'])
+                                self.proteins[contents['pickable_object_name']] += len(contents['points'])
+                                self.tomograms[contents['run_name']].add(contents['pickable_object_name']) 
+                                self.tomos_pickers[contents['run_name']].add(contents['user_id'])
                         
 
     def _update_tomo_sts(self):
