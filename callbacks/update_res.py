@@ -11,7 +11,7 @@ from dash import (
 )
 
 def candidate_list(i, j):
-    return  dbc.ListGroupItem("{} (labeled {} times)".format(dirs[i], j))
+    return  dbc.ListGroupItem("{} (labeled by {} person)".format(dirs[i], j))
 
 def ranking_list(i, j):
     return  dbc.ListGroupItem("{} {} tomograms".format(i, j))

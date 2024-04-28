@@ -5,7 +5,7 @@ def layout():
     return dbc.Card([
                         dbc.CardHeader([
                             DashIconify(icon="material-symbols-light:microbiology-outline", width=30, style={"margin": "3px"}),
-                            'Waiting list (need 2 people)',
+                            'Waitlist (labeled by < 2 people)',
                             ], 
                             style={"font-weight": "bold"}
                         ),

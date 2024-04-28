@@ -4,8 +4,8 @@ from dash_iconify import DashIconify
 def layout():
     return dbc.Card([
                         dbc.CardHeader([
-                            DashIconify(icon="icon-park-twotone:composition", width=30, style={"margin": "3px"}),
-                            'Proteins labeled per tomogram',
+                            DashIconify(icon="vscode-icons:folder-type-component", width=30, style={"margin": "3px"}),
+                            'Labeled object types per tomogram',
                             ], 
                             style={"font-weight": "bold"}
                         ),

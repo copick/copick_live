@@ -38,10 +38,10 @@ app.layout = html.Div(
                         dbc.Col([tomo_progress(),
                                  unlabelled_tomos()
                                  ], 
-                                 width=2),
-                        dbc.Col(composition(), width=2), 
+                                 width=2), 
                         dbc.Col(ranking(), width=3),
-                        dbc.Col(protein_sts(), width=5),
+                        dbc.Col(composition(), width=3),
+                        dbc.Col(protein_sts(), width=4),
                     ],
                     justify='center',
                     className="h-60",
