@@ -2,7 +2,7 @@ import plotly.express as px
 import dash_bootstrap_components as dbc
 import json
 
-from utils.data_utils_threading import dataset, dirs, COUNTER_FILE_PATH
+from utils.data_utils_threading import dataset, dirs, dir2id, COUNTER_FILE_PATH
 from dash import (
     Input,
     Output,
@@ -104,8 +104,11 @@ def update_results(n):
     data = dataset.fig_data()
     l = 1/len(data['colors'])*100
     progress_list = []
-    for tomogram,ps in dataset.tomograms.items():
+    obj_order = {name:i for i,name in enumerate(data['name'])}
+    tomograms = {k:v for k,v in sorted(dataset.tomograms.items(), key=lambda x: dir2id[x[0]])} 
+    for tomogram,ps in tomograms.items():
         progress = []
+        ps = sorted(list(ps), key=lambda x: obj_order[x])
         for p in ps:
             progress.append(dbc.Progress(value=l, color=data['colors'][p], bar=True))
         
