@@ -2,7 +2,7 @@ import plotly.express as px
 import dash_bootstrap_components as dbc
 import json
 
-from utils.data_utils_threading import dataset, copick_config_file, dirs, COUNTER_FILE_PATH
+from utils.data_utils_threading import dataset, dirs, COUNTER_FILE_PATH
 from dash import (
     Input,
     Output,
@@ -35,8 +35,8 @@ def toggle_help_modal(n_clicks, is_open):
 )
 def download_json(n_clicks, input_value):   
     filename = 'copick_config_' + '_'.join(input_value.split('.')) + '.json'
-    copick_config_file["user_id"] = input_value
-    return dict(content=json.dumps(copick_config_file), filename=filename)
+    dataset.config_file["user_id"] = input_value
+    return dict(content=json.dumps(dataset.config_file), filename=filename)
 
 
 @callback(
@@ -72,7 +72,7 @@ def download_txt(json_data, input_value):
     Output('progress-bar', 'label'),
     Input('interval-component', 'n_intervals')
 )
-def update_histogram(n):
+def update_results(n):
     dataset.refresh()
     data = dataset.fig_data()
     fig = px.bar(x=data['name'], 
@@ -84,8 +84,8 @@ def update_histogram(n):
     fig.update(layout_showlegend=False)
     candidates = dataset.candidates(10, random_sampling=False)
     num_per_person_ordered = dataset.num_per_person_ordered 
-    label = f'Labeled {len(dataset.tomos_picked)} out of 1000 tomograms'
-    bar_val = len(dataset.tomos_picked)/1000*100
+    label = f'Labeled {len(dataset.tomos_pickers)} out of 1000 tomograms'
+    bar_val = len(dataset.tomos_pickers)/1000*100
     
     return fig, \
            dbc.ListGroup([candidate_list(i, j) for i, j in candidates.items()], flush=True), \
