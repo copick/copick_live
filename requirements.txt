@@ -8,5 +8,5 @@ dash-iconify==0.1.2
 #dash-table==5.0.0
 Flask==2.2.5
 numpy
-git+https://github.com/uermel/copick.git
-smbprotocol
+#git+https://github.com/uermel/copick.git
+#smbprotocol
