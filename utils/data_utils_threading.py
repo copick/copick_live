@@ -188,7 +188,7 @@ class Dataset:
                 idx = image_dataset['name'].index(name)
                 image_dataset['count'][idx] = count
                 
-        image_dataset['colors'] = ['rgb'+str(tuple(i)) for i in image_dataset['colors']]
+        image_dataset['colors'] = ['rgba'+str(tuple(i)) for i in image_dataset['colors']]
         return image_dataset
 
 

@@ -12,4 +12,4 @@ def layout():
                         ),
                         dbc.CardBody([dcc.Graph(id='proteins-histogram')])
                     ],
-                    style={"height": '100%'}),
+                    style={"height": '87vh'}),

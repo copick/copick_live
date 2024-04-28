@@ -8,6 +8,7 @@ from components.progress import layout as tomo_progress
 from components.proteins import layout as protein_sts
 from components.waitlist import layout as unlabelled_tomos
 from components.annotators import layout as ranking
+from components.composition import layout as composition
 
 
 external_stylesheets = [dbc.themes.BOOTSTRAP, "assets/header-style.css",]  # need to use bootstrap themes
@@ -35,21 +36,21 @@ app.layout = html.Div(
                 dbc.Row(
                     [
                         dbc.Col([tomo_progress(),
-                                 unlabelled_tomos(),       
+                                 unlabelled_tomos()
                                  ], 
-                                 width=4),
+                                 width=2),
+                        dbc.Col(composition(), width=2), 
                         dbc.Col(ranking(), width=3),
                         dbc.Col(protein_sts(), width=5),
                     ],
                     justify='center',
-                    className="h-50",
+                    className="h-60",
                 ),
             ],
-            fluid=True
+            fluid=True,
         ),
         html.Div(browser_cache)
     ],
-    style={"height": "90vh"},
 )
 
 

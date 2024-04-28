@@ -75,14 +75,16 @@ def download_txt(json_data, input_value):
 def update_results(n):
     dataset.refresh()
     data = dataset.fig_data()
+    color_dict = {k:data['colors'][v-2] for k,v in data['labels'].items()}
     fig = px.bar(x=data['name'], 
                  y=data['count'], 
                  labels={'x': '', 'y':'Counts'}, 
                  text_auto=True,
-                 color = data['colors'],
+                 color = data['name'],
+                 color_discrete_map = color_dict,
                  )
     fig.update(layout_showlegend=False)
-    candidates = dataset.candidates(10, random_sampling=False)
+    candidates = dataset.candidates(100, random_sampling=False)
     num_per_person_ordered = dataset.num_per_person_ordered 
     label = f'Labeled {len(dataset.tomos_pickers)} out of 1000 tomograms'
     bar_val = len(dataset.tomos_pickers)/1000*100
@@ -94,3 +96,21 @@ def update_results(n):
            bar_val, \
            f'{bar_val}%'
 
+
+@callback(
+    Output('composition', 'children'),
+    Input('interval-component', 'n_intervals')
+)
+def update_results(n):
+    data = dataset.fig_data()
+    color_dict = {k:data['colors'][v-2] for k,v in data['labels'].items()}
+    l = 1/len(color_dict)*100
+    progress_list = []
+    for tomogram,ps in dataset.tomograms.items():
+        progress = []
+        for p in ps:
+            progress.append(dbc.Progress(value=l, color=color_dict[p], bar=True))
+        
+        progress_list.append(dbc.ListGroupItem([tomogram, dbc.Progress(progress)]))
+   
+    return dbc.ListGroup(progress_list)

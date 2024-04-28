@@ -11,8 +11,9 @@ def layout():
                                         ),
                         dcc.Loading(
                             id="loading-annotators",
-                            children=[html.Div([dbc.CardBody(id='rank'),])],
+                            children=dbc.CardBody(id='rank', style={'overflowY': 'scroll'}),
                             type="circle",
                         )
                     ],
-                    style={"height": '100%'})
+                    style={"height": '87vh'}
+                    )
