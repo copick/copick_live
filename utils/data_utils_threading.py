@@ -53,18 +53,13 @@ class Dataset:
                             ) 
 
         xdata = []
-        colors = []
-        labels = dict()
+        colors = dict()
         for po in self.config_file["pickable_objects"]:
-            if po["name"] == "background":
-                continue
             xdata.append(po["name"])
-            colors.append(po["color"])
-            labels[po["name"]] = po["label"]
+            colors[po["name"]] = po["color"]
 
         self._im_dataset = {'name': xdata, 
-                           'count': [0]*len(xdata), 
-                           'labels': labels, 
+                           'count': [], 
                            'colors': colors
                           }
 
@@ -73,18 +68,13 @@ class Dataset:
         self._tomos_one_pick = set() #may remove some elems, thereofore, empty before each check
 
         xdata = []
-        colors = []
-        labels = dict()
+        colors = dict()
         for po in self.config_file["pickable_objects"]:
-            if po["name"] == "background":
-                continue
             xdata.append(po["name"])
-            colors.append(po["color"])
-            labels[po["name"]] = po["label"]
-
+            colors[po["name"]] = po["color"]
+            
         self._im_dataset = {'name': xdata, 
-                           'count': [0]*len(xdata), 
-                           'labels': labels, 
+                           'count': [], 
                            'colors': colors
                           }
         
@@ -183,12 +173,10 @@ class Dataset:
     
     def fig_data(self):
         image_dataset = copy.deepcopy(self._im_dataset)
-        for name,count in self.proteins.items():
-            if name in image_dataset['labels']:
-                idx = image_dataset['name'].index(name)
-                image_dataset['count'][idx] = count
-                
-        image_dataset['colors'] = ['rgba'+str(tuple(i)) for i in image_dataset['colors']]
+        for name in image_dataset['name']:
+            image_dataset['count'].append(self.proteins[name])
+                         
+        image_dataset['colors'] = {k:'rgba'+str(tuple(v)) for k,v in image_dataset['colors'].items()}
         return image_dataset
 
 
