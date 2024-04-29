@@ -93,12 +93,12 @@ class Dataset:
                 for json_file in pathlib.Path(dir_path).glob('*.json'):
                     contents = json.load(open(json_file))
                     if 'user_id' in contents and contents['user_id'] not in self._prepicks:
-                        if 'run_name' in contents and 'pickable_object_name' in contents and\
-                           'points' in contents and contents['points'] and len(contents['points']):
-                                self.tomos_per_person[contents['user_id']].add(contents['run_name'])
-                                self.proteins[contents['pickable_object_name']] += len(contents['points'])
-                                self.tomograms[contents['run_name']].add(contents['pickable_object_name']) 
-                                self.tomos_pickers[contents['run_name']].add(contents['user_id'])
+                        if 'pickable_object_name' in contents and 'points' in contents and contents['points'] and len(contents['points']):
+                            self.proteins[contents['pickable_object_name']] += len(contents['points'])
+                        if 'run_name' in contents and 'pickable_object_name' in contents:
+                            self.tomos_per_person[contents['user_id']].add(contents['run_name'])
+                            self.tomograms[contents['run_name']].add(contents['pickable_object_name']) 
+                            self.tomos_pickers[contents['run_name']].add(contents['user_id'])
                         
 
     def _update_tomo_sts(self):
@@ -173,8 +173,9 @@ class Dataset:
     
     def fig_data(self):
         image_dataset = copy.deepcopy(self._im_dataset)
+        proteins = copy.deepcopy(self.proteins)
         for name in image_dataset['name']:
-            image_dataset['count'].append(self.proteins[name])
+            image_dataset['count'].append(proteins[name])
                          
         image_dataset['colors'] = {k:'rgba'+str(tuple(v)) for k,v in image_dataset['colors'].items()}
         return image_dataset
