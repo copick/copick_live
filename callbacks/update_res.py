@@ -36,7 +36,7 @@ def toggle_help_modal(n_clicks, is_open):
 def download_json(n_clicks, input_value):   
     filename = 'copick_config_' + '_'.join(input_value.split('.')) + '.json'
     dataset.config_file["user_id"] = input_value
-    return dict(content=json.dumps(dataset.config_file), filename=filename)
+    return dict(content=json.dumps(dataset.config_file, indent=4), filename=filename)
 
 
 @callback(
@@ -86,7 +86,7 @@ def update_results(n):
     candidates = dataset.candidates(100, random_sampling=False)
     num_per_person_ordered = dataset.num_per_person_ordered 
     label = f'Labeled {len(dataset.tomos_pickers)} out of 1000 tomograms'
-    bar_val = len(dataset.tomos_pickers)/1000*100
+    bar_val = round(len(dataset.tomos_pickers)/1000*100, 1)
     
     return fig, \
            dbc.ListGroup([candidate_list(i, j) for i, j in candidates.items()], flush=True), \
