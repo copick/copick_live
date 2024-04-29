@@ -11,5 +11,5 @@ def layout():
                         ),
                         dbc.CardBody(id='waitlist', style={'overflowY': 'scroll'}),
                     ],
-                    style={"height": '70vh'}
+                    style={"height": '63vh'}
                     )

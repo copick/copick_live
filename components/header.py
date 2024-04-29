@@ -36,7 +36,7 @@ def layout():
                             html.Img(
                                 id="logo",
                                 src='assets/czii.png',
-                                height="50px",
+                                height="40px",
                             ),
                             md="auto",
                         ),
