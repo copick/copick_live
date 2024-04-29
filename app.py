@@ -8,6 +8,7 @@ from components.progress import layout as tomo_progress
 from components.proteins import layout as protein_sts
 from components.waitlist import layout as unlabelled_tomos
 from components.annotators import layout as ranking
+from components.composition import layout as composition
 
 
 external_stylesheets = [dbc.themes.BOOTSTRAP, "assets/header-style.css",]  # need to use bootstrap themes
@@ -20,7 +21,7 @@ browser_cache =html.Div(
         children=[
             dcc.Interval(
             id='interval-component',
-            interval=10*1000, # in milliseconds, 10s
+            interval=20*1000, # in milliseconds, 10s
             n_intervals=0
         )
         ],
@@ -35,25 +36,25 @@ app.layout = html.Div(
                 dbc.Row(
                     [
                         dbc.Col([tomo_progress(),
-                                 unlabelled_tomos(),       
+                                 unlabelled_tomos()
                                  ], 
-                                 width=4),
+                                 width=2), 
                         dbc.Col(ranking(), width=3),
-                        dbc.Col(protein_sts(), width=5),
+                        dbc.Col(composition(), width=3),
+                        dbc.Col(protein_sts(), width=4),
                     ],
                     justify='center',
-                    className="h-50",
+                    className="h-60",
                 ),
             ],
-            fluid=True
+            fluid=True,
         ),
         html.Div(browser_cache)
     ],
-    style={"height": "90vh"},
 )
 
 
 
 
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8050, debug=True)
+    app.run_server(host="0.0.0.0", port=8000, debug=False)

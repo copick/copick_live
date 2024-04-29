@@ -1,8 +1,5 @@
-import json
 import plotly.express as px
 
-with open('assets/copick_config_default.json') as f:
-    config = json.load(f)
 
 def barplot(x, y, xlabel=None, ylabel=None, colors: bool | list=None):
     if colors:
