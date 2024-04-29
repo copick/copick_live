@@ -41,11 +41,11 @@ def download_json(n_clicks, input_value):
 
 @callback(
     Output("download-txt", "data"),
-    Input("download-json", "data"),
-    State("username", "value"),
+    Input("btn-download-txt", "n_clicks"),
+    #State("username", "value"),
     prevent_initial_call=True,
 )
-def download_txt(json_data, input_value):
+def download_txt(n_clicks):
     with open(COUNTER_FILE_PATH) as f:
         counter = json.load(f)
     
@@ -55,7 +55,7 @@ def download_txt(json_data, input_value):
 
     counter['repeat'] += 1
     task_contents = '\n'.join(dirs[counter['start']:counter['start']+counter['tasks_per_person']])
-    task_filename = 'task_recommendation_' + '_'.join(input_value.split('.')) + '.txt' 
+    task_filename = 'task_recommendation.txt' 
 
     with open(COUNTER_FILE_PATH, 'w') as f:
         f.write(json.dumps(counter, indent=4))   
