@@ -15,6 +15,7 @@ LOCAL_FILE_PATH = '%s' % config['local']['LOCAL_FILE_PATH'] + '/ExperimentRuns'
 
 dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1, 122) for j in range(1,10)]
 dir2id = {j:i for i,j in enumerate(dirs)}
+dir_set = set(dirs)
 
 
 # define a wrapper function
@@ -93,7 +94,8 @@ class Dataset:
                 for json_file in pathlib.Path(dir_path).glob('*.json'):
                     contents = json.load(open(json_file))
                     if 'user_id' in contents and contents['user_id'] not in self._prepicks:
-                        if 'pickable_object_name' in contents and 'run_name' in contents and \
+                        if 'pickable_object_name' in contents and \
+                           'run_name' in contents and contents['run_name'] in dir_set and \
                            'points' in contents and contents['points'] and len(contents['points']):
                                 self.proteins[contents['pickable_object_name']] += len(contents['points'])
                                 self.tomos_per_person[contents['user_id']].add(contents['run_name'])
