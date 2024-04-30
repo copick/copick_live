@@ -33,8 +33,9 @@ def toggle_help_modal(n_clicks, is_open):
     State("username", "value"),
     prevent_initial_call=True,
 )
-def download_json(n_clicks, input_value):   
-    filename = 'copick_config_' + '_'.join(input_value.split('.')) + '.json'
+def download_json(n_clicks, input_value):
+    input_value = '.'.join(input_value.split(' '))
+    filename = 'copick_config_' + '_'.join(input_value.split('.')) + '.json'   
     dataset.config_file["user_id"] = input_value
     return dict(content=json.dumps(dataset.config_file, indent=4), filename=filename)
 
