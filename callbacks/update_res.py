@@ -108,6 +108,7 @@ def update_results(n):
     tomograms = {k:v for k,v in sorted(dataset.tomograms.items(), key=lambda x: dir2id[x[0]])} 
     for tomogram,ps in tomograms.items():
         progress = []
+        ps = [p for p in ps if p in obj_order]
         ps = sorted(list(ps), key=lambda x: obj_order[x])
         for p in ps:
             progress.append(dbc.Progress(value=l, color=data['colors'][p], bar=True))
