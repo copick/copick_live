@@ -17,7 +17,8 @@ instructions = [dcc.Markdown('''
             html.Div(
                     children=[
                         dbc.Input(id='username', placeholder="Please input your name (e.g., john.doe)", type="text"),
-                        dbc.Button("Download", id='btn-download', outline=True, color="primary", className="me-1"),
+                        dbc.Button("Download copick config file", id='btn-download', outline=True, color="primary", className="me-1"),
+                        dbc.Button("Download recommendation file", id='btn-download-txt', outline=True, color="primary", className="me-1"),
                         dcc.Download(id="download-json"),
                         dcc.Download(id="download-txt"),
                     ],

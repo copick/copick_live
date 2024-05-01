@@ -9,11 +9,12 @@ def layout():
                                         ], 
                                         style={"font-weight": "bold"}
                                         ),
-                        dcc.Loading(
-                            id="loading-annotators",
-                            children=dbc.CardBody(id='rank', style={'overflowY': 'scroll'}),
-                            type="circle",
-                        )
+                        # dcc.Loading(
+                        #     id="loading-annotators",
+                        #     children=dbc.CardBody(id='rank', style={'overflowY': 'scroll'}),
+                        #     type="circle",
+                        # ),
+                        dbc.CardBody(id='rank', style={'overflowY': 'scroll'})
                     ],
                     style={"height": '87vh'}
                     )
