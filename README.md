@@ -3,7 +3,9 @@ A Dash Plotly server visualizing CZII ML challenge pickathon with live updates.
 
 
 ## Usage
-Installation: `pip install -r requirements.txt`. Need 2 files, see example below:
+Installation: `pip install -r requirements.txt`.   
+
+A copick configuration file and a json checkpoint file are needed, see example below:
 
 **A copick configuration json file template**  
 See [copick example](https://github.com/uermel/copick).
