@@ -2,22 +2,27 @@ import plotly.express as px
 import dash_bootstrap_components as dbc
 import json
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.executors.pool import ProcessPoolExecutor
 
 from utils.data_utils_threading import dataset, dirs, dir2id, COUNTER_FILE_PATH
 from dash import (
+    html,
     Input,
     Output,
     callback,
     State,
 )
 
+
+
 # 1st update of the internal states
 dataset.refresh()
 
 #Scheduler
-sched = BackgroundScheduler()
-sched.add_job(func=dataset.refresh, trigger='interval', seconds=20)
-sched.start()
+scheduler = BackgroundScheduler() # in-memory job stores
+scheduler.add_job(func=dataset.refresh, trigger='interval', seconds=20)  # interval should be larger than the time it takes to refresh, o.w. it will be report incomplete stats.
+scheduler.start()
 
 
 def candidate_list(i, j):
@@ -111,9 +116,10 @@ def update_results(n):
     Input('interval-component', 'n_intervals')
 )
 def update_results(n):
+    progress_list = []
+    composition_list = html.Div()
     data = dataset.fig_data()
     l = 1/len(data['colors'])*100
-    progress_list = []
     obj_order = {name:i for i,name in enumerate(data['name'])}
     tomograms = {k:v for k,v in sorted(dataset.tomograms.items(), key=lambda x: dir2id[x[0]])} 
     for tomogram,ps in tomograms.items():
@@ -124,5 +130,6 @@ def update_results(n):
             progress.append(dbc.Progress(value=l, color=data['colors'][p], bar=True))
         
         progress_list.append(dbc.ListGroupItem([tomogram, dbc.Progress(progress)]))
-   
-    return dbc.ListGroup(progress_list)
+    
+    composition_list = dbc.ListGroup(progress_list)
+    return composition_list
