@@ -11,7 +11,7 @@ from dash import (
     State,
 )
 
-# initialize internal states
+# 1st update of the internal states
 dataset.refresh()
 
 #Scheduler
