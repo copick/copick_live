@@ -1,4 +1,4 @@
-# copick_live_vis
+# copick\_live\_vis
 A Dash Plotly server visualizing CZII ML challenge pickathon with live updates.  
 
 
@@ -19,4 +19,9 @@ An example:
 ``` 
 
 1. Edit the `conifg.ini` file.  
-2. Run `python app.py`.
+2. Run `python app.py` in the correct Python environment. Access the website at `http://localhost:8000` in the browser.
+
+## GUI
+
+![CZII copick live update](assets/gui-1.png)
+![CZII copick live update](assets/gui-2.png)
