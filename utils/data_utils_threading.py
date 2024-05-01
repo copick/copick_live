@@ -1,8 +1,7 @@
 import os, pathlib, time
 import threading 
-import json
 
-import random, json, copy, configparser, os
+import random, json, copy, configparser
 from collections import defaultdict, deque
 import json
 
@@ -184,3 +183,4 @@ class Dataset:
 
 
 dataset = Dataset(LOCAL_FILE_PATH, COPICK_CONFIG_PATH)
+
