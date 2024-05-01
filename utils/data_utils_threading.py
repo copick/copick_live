@@ -91,15 +91,18 @@ class Dataset:
             dir_path = r + '/' + dir +'/Picks'
             if os.path.exists(dir_path):
                 for json_file in pathlib.Path(dir_path).glob('*.json'):
-                    contents = json.load(open(json_file))
-                    if 'user_id' in contents and contents['user_id'] not in self._prepicks:
-                        if 'pickable_object_name' in contents and \
-                           'run_name' in contents and contents['run_name'] in dir_set and \
-                           'points' in contents and contents['points'] and len(contents['points']):
-                                self.proteins[contents['pickable_object_name']] += len(contents['points'])
-                                self.tomos_per_person[contents['user_id']].add(contents['run_name'])
-                                self.tomograms[contents['run_name']].add(contents['pickable_object_name']) 
-                                self.tomos_pickers[contents['run_name']].add(contents['user_id'])
+                    try:
+                        contents = json.load(open(json_file))
+                        if 'user_id' in contents and contents['user_id'] not in self._prepicks:
+                            if 'pickable_object_name' in contents and \
+                            'run_name' in contents and contents['run_name'] in dir_set and \
+                            'points' in contents and contents['points'] and len(contents['points']):
+                                    self.proteins[contents['pickable_object_name']] += len(contents['points'])
+                                    self.tomos_per_person[contents['user_id']].add(contents['run_name'])
+                                    self.tomograms[contents['run_name']].add(contents['pickable_object_name']) 
+                                    self.tomos_pickers[contents['run_name']].add(contents['user_id'])
+                    except: 
+                        pass
                         
 
     def _update_tomo_sts(self):
