@@ -1,6 +1,7 @@
 import plotly.express as px
 import dash_bootstrap_components as dbc
 import json
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from utils.data_utils_threading import dataset, dirs, dir2id, COUNTER_FILE_PATH
 from dash import (
@@ -9,6 +10,15 @@ from dash import (
     callback,
     State,
 )
+
+# initialize internal states
+dataset.refresh()
+
+#Scheduler
+sched = BackgroundScheduler()
+sched.add_job(func=dataset.refresh, trigger='interval', seconds=20)
+sched.start()
+
 
 def candidate_list(i, j):
     return  dbc.ListGroupItem("{} (labeled by {} person)".format(dirs[i], j))
@@ -74,7 +84,6 @@ def download_txt(n_clicks):
     Input('interval-component', 'n_intervals')
 )
 def update_results(n):
-    dataset.refresh()
     data = dataset.fig_data()
     fig = px.bar(x=data['name'], 
                  y=data['count'], 
