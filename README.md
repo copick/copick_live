@@ -1,5 +1,5 @@
 # CopickLive
-A Dash Plotly server visualizing CZII ML challenge pickathon with live updates.  
+CopickLive is a Dash Plotly server visualizing CZII ML challenge pickathon results with live updates.  
 
 
 ## Usage
