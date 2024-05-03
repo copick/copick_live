@@ -1,6 +1,12 @@
 # CopickLive
 CopickLive is a Dash Plotly server visualizing CZII ML challenge pickathon results with live updates.  
 
+**CopickLive website**
+![CZII copick live update](assets/gui-1.png)
+
+**Get Started window**
+![CZII copick live update](assets/gui-2.png)
+
 
 ## Usage
 **Python environment setup:**  
@@ -25,9 +31,5 @@ The file is used to generate a task list for each picker. It contains 3 keywords
 1. Edit the `conifg.ini` file.  
 2. Run `python app.py` in the Python environment. Access the website at `http://localhost:8000` in the browser.
 
-## GUI
-**CopickLive website**
-![CZII copick live update](assets/gui-1.png)
 
-**Get Started window**
-![CZII copick live update](assets/gui-2.png)
+
