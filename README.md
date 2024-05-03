@@ -18,7 +18,7 @@ Three configuration files are needed: the copick configuration file, json checkp
 This file is a template for generating a customized copick configuration file for each picker. See [copick example](https://github.com/uermel/copick).
 
 **The json checkpoint file**     
-The file is used to generate a task list for each picker. It contains 3 keywords, ensuring every tomogram sample get 2 people to work on (`start` becomes `start+tasks_per_person` when `repeat >= 2`). Below is an example:    
+The file is used to generate a task list for each picker. It contains 3 keywords, ensuring every tomogram sample get 2 people to work on (`start += tasks_per_person` when `repeat >= 2`). Below is an example:    
 ```
 {  
     "start": 0,       
