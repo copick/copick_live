@@ -7,6 +7,9 @@ CopickLive main page
 Get Started window
 ![CZII copick live update](assets/gui-2.png)
 
+Evaluating each tomogram
+![CZII copick live update](assets/gui-3.png)
+
 
 ## Usage
 **Python environment setup:**  
@@ -37,8 +40,11 @@ COPICK_CONFIG_PATH = path_to_copick_config_file.json
 [counter]
 COUNTER_FILE_PATH = path_to_checkpoint_file.json
 
-[local]
-LOCAL_FILE_PATH = path_to_copick_overlay_output
+[local_picks]
+PICK_FILE_PATH = path_to_copick_overlay_output
+
+[local_tomos]
+TOMO_FILE_PATH = path_to_copick_tomogram_data
 ```
 
 
