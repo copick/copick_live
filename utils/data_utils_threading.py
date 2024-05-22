@@ -3,16 +3,17 @@ import threading
 
 import random, json, copy, configparser
 from collections import defaultdict, deque
-import json
+import json, zarr
 
 
 config = configparser.ConfigParser()
 config.read(os.path.join(os.getcwd(), "config.ini"))
 COPICK_CONFIG_PATH = '%s' % config['copick']['COPICK_CONFIG_PATH']
 COUNTER_FILE_PATH = '%s' % config['counter']['COUNTER_FILE_PATH'] 
-LOCAL_FILE_PATH = '%s' % config['local']['LOCAL_FILE_PATH'] + '/ExperimentRuns' 
+PICK_FILE_PATH = '%s' % config['local_picks']['PICK_FILE_PATH'] + 'ExperimentRuns/'
+TOMO_FILE_PATH = '%s' % config['local_tomos']['TOMO_FILE_PATH'] + 'ExperimentRuns/' 
 
-dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1, 122) for j in range(1,10)]
+dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1,122) for j in range(1,10)]
 dir2id = {j:i for i,j in enumerate(dirs)}
 dir_set = set(dirs)
 
@@ -40,7 +41,7 @@ class Dataset:
         self.num_per_person_ordered = dict() # {'Tom':5, 'Julie':3, ...}
         
         # hidden variables for updating candidate recomendations 
-        self._all = set([i for i in range(1000)])
+        self._all = set([i for i in range(len(dirs))])
         self._tomos_done = set()   # labeled at least by 2 people, {0, 1, 2}
         self._tomos_one_pick = set() # labeled only by 1 person, {3,4,5,...} 
         self._candidate_dict = defaultdict() # {1:1, 2:0, ...}
@@ -88,7 +89,7 @@ class Dataset:
     def _walk_dir(self, args):
         r, s, e = args
         for dir in dirs[s:e]:
-            dir_path = r + '/' + dir +'/Picks'
+            dir_path = r + dir +'/Picks'
             if os.path.exists(dir_path):
                 for json_file in pathlib.Path(dir_path).glob('*.json'):
                     try:
@@ -184,6 +185,25 @@ class Dataset:
         image_dataset['colors'] = {k:'rgba'+str(tuple(v)) for k,v in image_dataset['colors'].items()}
         return image_dataset
 
+    @staticmethod
+    def load_tomogram(run: str):
+        zarr_file_path = TOMO_FILE_PATH + run + '/VoxelSpacing10.000/denoised.zarr'
+        image = zarr.open(zarr_file_path, 'r')
+        return image[0][:]
 
-dataset = Dataset(LOCAL_FILE_PATH, COPICK_CONFIG_PATH)
+    def load_picks(self, run: str):
+        dir_path = '/Volumes/hpc_projects_workshops/copick_pickathonApril2024_overlay/ExperimentRuns/' + run + '/Picks'
+        all_contents = []
+        if os.path.exists(dir_path):
+            for json_file in pathlib.Path(dir_path).glob('*.json'):
+                try:
+                    contents = json.load(open(json_file))
+                    all_contents.append(contents)
+                except:
+                    pass
+    
+        return all_contents
+
+
+dataset = Dataset(PICK_FILE_PATH, COPICK_CONFIG_PATH)
 

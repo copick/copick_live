@@ -1,6 +1,9 @@
 import plotly.express as px
+import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
 import json
+import pandas as pd
+from collections import defaultdict
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.executors.pool import ProcessPoolExecutor
@@ -12,6 +15,10 @@ from dash import (
     Output,
     callback,
     State,
+    ALL,
+    MATCH,
+    ctx,
+    dcc
 )
 
 
@@ -23,6 +30,23 @@ dataset.refresh()
 scheduler = BackgroundScheduler() # in-memory job stores
 scheduler.add_job(func=dataset.refresh, trigger='interval', seconds=20)  # interval should be larger than the time it takes to refresh, o.w. it will be report incomplete stats.
 scheduler.start()
+
+
+roundbutton = {
+    "border": 'transparent',
+    #"border-radius": "100%",
+    "padding": 0,
+    "backgroundColor": 'transparent',
+    "color": "black",
+    "textAlign": "center",
+    "display": "block",
+    "fontSize": 9,
+    "height": 9,
+    "width": 9,
+    "margin-left": 10,
+    "margin-top": 8,
+}
+
 
 
 def candidate_list(i, j):
@@ -40,6 +64,40 @@ def ranking_list(i, j):
 )
 def toggle_help_modal(n_clicks, is_open):
     return not is_open
+
+
+@callback(
+    Output("modal-evaluation", "is_open"),
+    Output("modal-body-evaluation", "children"),
+    Input({"type": "tomogram-eval-bttn", "index": ALL}, "n_clicks"),
+    State("modal-evaluation", "is_open"),
+    prevent_initial_call=True
+)
+def toggle_evaluation_modal(n_clicks, is_open):
+    changed_id = [p['prop_id'] for p in ctx.triggered][0].split(".")[0]
+    tomogram_id = json.loads(changed_id)["index"]
+    picks = dataset.load_picks(tomogram_id)
+    dt = defaultdict(list)
+    for pick in picks:
+        try:
+            points = pick['points']
+            for point in points:
+                dt['pickable_object_name'].append(pick['pickable_object_name'])
+                dt['user_id'].append(pick['user_id'])
+                dt['x'].append(point['location']['x']/10)
+                dt['y'].append(point['location']['y']/10)
+                dt['z'].append(point['location']['z']/10)
+                dt['size'].append(0.1)
+        except:
+            pass
+    
+    df = pd.DataFrame.from_dict(dt)
+    fig = px.scatter_3d(df, x='x', y='y', z='z', color='pickable_object_name', symbol='user_id', size='size', opacity=0.5)
+    
+    if any(n_clicks):
+        return not is_open, [html.Div([dcc.Graph(figure=fig)])]
+    else:
+        return is_open, []
 
 
 @callback(
@@ -113,9 +171,10 @@ def update_results(n):
 
 @callback(
     Output('composition', 'children'),
-    Input('interval-component', 'n_intervals')
+    #Input('interval-component', 'n_intervals'),
+    Input('refresh-button', 'n_clicks')
 )
-def update_results(n):
+def update_compositions(n):
     progress_list = []
     composition_list = html.Div()
     data = dataset.fig_data()
@@ -129,7 +188,10 @@ def update_results(n):
         for p in ps:
             progress.append(dbc.Progress(value=l, color=data['colors'][p], bar=True))
         
-        progress_list.append(dbc.ListGroupItem([tomogram, dbc.Progress(progress)]))
+        bttn = html.Button(id={"type": "tomogram-eval-bttn", "index": tomogram}, className="fa fa-search", style=roundbutton)
+        progress_list.append(dbc.ListGroupItem(children=[dbc.Row([tomogram, bttn]), dbc.Progress(progress)], style={"border": 'transparent'}))
     
     composition_list = dbc.ListGroup(progress_list)
     return composition_list
+
+

@@ -1,7 +1,6 @@
 from dash_iconify import DashIconify
 import dash_bootstrap_components as dbc
 
-
 def layout():
     """
     Returns the layout stats
@@ -13,7 +12,7 @@ def layout():
                             ],
                             style={"font-weight": "bold"}
                         ),
-                        dbc.Label(id='total-labeled', children='Labeled 100 out of 1000 tomograms', style={'margin-top': '5px', 'margin-left': '15px', 'margin-bottom': '-5px'}),
+                        dbc.Label(id='total-labeled', children='Labeled 0 out of 1000 tomograms', style={'margin-top': '5px', 'margin-left': '15px', 'margin-bottom': '-5px'}),
                         dbc.CardBody([dbc.Progress(id='progress-bar', label="0%", value=0)])
                     ],
                     style={"height": '13vh'})

@@ -1,29 +1,16 @@
 
 from dash import html
 import dash_bootstrap_components as dbc
-from .instructions import instructions
-
 
 
 button_help = dbc.Button(
-    "Get started",
+    "Getting Started",
     #outline=True,
     color="primary",
     id="button-help",
     className="me-1",
     style={"text-transform": "none"},
 )
-
-
-help_popup = dbc.Modal(
-                [
-                    dbc.ModalHeader(dbc.ModalTitle("Instructions")),
-                    dbc.ModalBody(instructions),
-                ], 
-                id="modal-help",
-                is_open=False,
-                size="xl"
-             )
 
 
 def layout():
@@ -76,8 +63,7 @@ def layout():
                         ),
                     ],
                     align="center",
-                ),
-                help_popup  
+                ), 
             ],
             fluid=True,
         ),
