@@ -8,9 +8,14 @@ from components.proteins import layout as protein_sts
 from components.waitlist import layout as unlabelled_tomos
 from components.annotators import layout as ranking
 from components.composition import layout as composition
+from components.popups import layout as popups
 
 
-external_stylesheets = [dbc.themes.BOOTSTRAP, "assets/header-style.css"] 
+external_stylesheets = [dbc.themes.BOOTSTRAP, 
+                        "assets/header-style.css", 
+                        "https://codepen.io/chriddyp/pen/bWLwgP.css",
+                        "https://use.fontawesome.com/releases/v5.10.2/css/all.css"] 
+
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 
 server = app.server
@@ -30,6 +35,7 @@ browser_cache =html.Div(
 app.layout = html.Div(
     [
         header(),
+        popups(),
         dbc.Container(
             [
                 dbc.Row(
