@@ -192,7 +192,7 @@ class Dataset:
         return image[0][:]
 
     def load_picks(self, run: str):
-        dir_path = '/Volumes/hpc_projects_workshops/copick_pickathonApril2024_overlay/ExperimentRuns/' + run + '/Picks'
+        dir_path = self.root + run + '/Picks'
         all_contents = []
         if os.path.exists(dir_path):
             for json_file in pathlib.Path(dir_path).glob('*.json'):
