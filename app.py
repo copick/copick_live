@@ -18,16 +18,16 @@ external_stylesheets = [dbc.themes.BOOTSTRAP,
 
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 
-server = app.server
-
 browser_cache =html.Div(
         id="no-display",
         children=[
             dcc.Interval(
-            id='interval-component',
-            interval=20*1000, # clientside check in milliseconds, 10s
-            n_intervals=0
-        )
+                id='interval-component',
+                interval=20*1000, # clientside check in milliseconds, 10s
+                n_intervals=0
+                ),
+            dcc.Store(id='tomogram-index', data=''),
+            dcc.Store(id='image-data', data=[])
         ],
     )
 
@@ -62,5 +62,5 @@ app.layout = html.Div(
 
 
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8000, debug=False)
+    app.run_server(host="0.0.0.0", port=8000, debug=True)
 

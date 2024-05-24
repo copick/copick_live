@@ -1,5 +1,19 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+import plotly.graph_objects as go
+
+def blank_fig():
+    """
+    Creates a blank figure with no axes, grid, or background.
+    """
+    fig = go.Figure()
+    fig.update_layout(template=None)
+    fig.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
+    fig.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
+
+    return fig
+
+
 
 instructions = [dcc.Markdown('''
                         Thanks for participating in CZII Pickathon! We highly encourage labeling all the 6 types of prteins in the tomogram.
@@ -36,7 +50,83 @@ instructions = [dcc.Markdown('''
 
     ]
 
-evaluations = []
+
+tabs = html.Div(
+    [
+        dbc.Tabs(
+            [
+                dbc.Tab(label="Points visualization", tab_id="tab-1"),
+                dbc.Tab(label="2D Plane Inspection", tab_id="tab-2"),
+                dbc.Tab(label="3D Volume Inspection", tab_id="tab-3"),
+            ],
+            id="tabs",
+            active_tab="tab-1",
+        ),
+        html.Div([
+            dbc.Collapse(id="collapse1",is_open=False, children=[html.Div(dcc.Dropdown(["Pickathon results","Embedding model results"], 'Pickathon results', id='pick-dropdown'), style={'width':'30%', 'justify-content': 'right', 'margin-top': '20px'}),
+                                                                 dcc.Graph(id='fig1', figure=blank_fig())]),
+            dbc.Collapse(id="collapse2",is_open=False, children=dbc.Container([
+                                                                                dbc.Row(
+                                                                                    [
+                                                                                        dbc.Col([dcc.Graph(id='fig2', figure=blank_fig()),
+                                                                                                dbc.Row([
+                                                                                                            dbc.Col(dbc.Row(dbc.Button('Reject', id='prev-im2d', style={'width': '50%'}, disabled=False, color='danger'), justify='end')),
+                                                                                                            dbc.Col(dbc.Row(dbc.Button('Accept', id='next-im2d', style={'width': '50%'}, disabled=False, color='success'), justify='start'))
+                                                                                                        ],
+                                                                                                        justify='evenly'
+                                                                                                        ),
+                                                                                                 ], 
+                                                                                                width=4,
+                                                                                                align="center",
+                                                                                               ), 
+                                                                                        dbc.Col([
+                                                                                                 dbc.Label(
+                                                                                                        "Please input your name",
+                                                                                                        className="mb-3",
+                                                                                                        #html_for='image-slider',
+                                                                                                    ),
+                                                                                                dbc.Input(id='username-eval', placeholder="e.g., john.doe", type="text"),
+                                                                                                dbc.Label(
+                                                                                                        "Please select a particle type",
+                                                                                                        className="mb-3",
+                                                                                                        #html_for='image-slider',
+                                                                                                    ),
+                                                                                                dcc.Dropdown(["apo-ferritin", "beta-amylase","beta-galactosidase", "ribosome", "thyroglobulin",  "virus-like-particle", "membrane-bound-protein"], 'ribosome', id='particle-dropdown'),
+                                                                                                dbc.Label("image width", className="mb-3"),
+                                                                                                dcc.Input(id="crop_width",type="number", placeholder="30", value =30),
+                                                                                                dbc.Label(
+                                                                                                        "Image Slider",
+                                                                                                        className="mb-3",
+                                                                                                        html_for='image-slider',
+                                                                                                    ),
+                                                                                                dcc.Slider(
+                                                                                                        id='image-slider',
+                                                                                                        min=0,
+                                                                                                        max=200,
+                                                                                                        value = 0,
+                                                                                                        step = 1,
+                                                                                                        updatemode='drag',
+                                                                                                        tooltip={"placement": "top", "always_visible": True},
+                                                                                                        marks={0: '0', 199: '199'},
+                                                                                                    ),
+                                                                                            ],
+                                                                                            width=4,
+                                                                                            align="center"),
+                                                                                    ],
+                                                                                    justify='center',
+                                                                                    align="center",
+                                                                                    className="h-100",
+                                                                                ),
+                                                                            ],
+                                                                            fluid=True,
+                                                                        ), 
+                ),                                                       
+                dbc.Collapse(id="collapse3",is_open=False, children=dcc.Graph(id='fig3', figure=blank_fig())),
+            ]),
+        ]
+    )
+
+
 
 def layout():
     return html.Div([
@@ -49,8 +139,8 @@ def layout():
                 size="xl"
             ),
         dbc.Modal([
-                    dbc.ModalHeader(dbc.ModalTitle("Tomogram Evaluation")),
-                    dbc.ModalBody(id='modal-body-evaluation', children=evaluations),
+                    #dbc.ModalHeader(dbc.ModalTitle("Tomogram Evaluation")),
+                    dbc.ModalBody(id='modal-body-evaluation', children=tabs),
                 ], 
                 id="modal-evaluation",
                 is_open=False,

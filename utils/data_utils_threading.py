@@ -185,24 +185,31 @@ class Dataset:
         image_dataset['colors'] = {k:'rgba'+str(tuple(v)) for k,v in image_dataset['colors'].items()}
         return image_dataset
 
-    @staticmethod
-    def load_tomogram(run: str):
-        zarr_file_path = TOMO_FILE_PATH + run + '/VoxelSpacing10.000/denoised.zarr'
-        image = zarr.open(zarr_file_path, 'r')
-        return image[0][:]
 
-    def load_picks(self, run: str):
-        dir_path = self.root + run + '/Picks'
+
+class TomogramDataset:
+    def __init__(self, run: str, bin: int = 0):
+        self.pick_root = PICK_FILE_PATH + run + '/Picks'
+        self.tomo_root = TOMO_FILE_PATH + run + '/VoxelSpacing10.000/denoised.zarr'
+        self.bin = bin
+    
+    @property
+    def picks(self):
         all_contents = []
-        if os.path.exists(dir_path):
-            for json_file in pathlib.Path(dir_path).glob('*.json'):
+        if os.path.exists(self.pick_root ):
+            for json_file in pathlib.Path(self.pick_root ).glob('*.json'):
                 try:
                     contents = json.load(open(json_file))
                     all_contents.append(contents)
                 except:
                     pass
-    
+
         return all_contents
+
+    @property
+    def tomogram(self):
+        return zarr.open(self.tomo_root, 'r')[self.bin][:]
+
 
 
 dataset = Dataset(PICK_FILE_PATH, COPICK_CONFIG_PATH)

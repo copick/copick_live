@@ -7,8 +7,21 @@ from collections import defaultdict
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.executors.pool import ProcessPoolExecutor
+from flask_caching import Cache
+from app import app
+import zarr, os
+from functools import lru_cache 
+from zarr.storage import LRUStoreCache, DirectoryStore
 
-from utils.data_utils_threading import dataset, dirs, dir2id, COUNTER_FILE_PATH
+import numpy as np
+from utils.data_utils_threading import (
+    dataset, 
+    dirs, 
+    dir2id, 
+    COUNTER_FILE_PATH, 
+    TOMO_FILE_PATH, 
+    TomogramDataset
+)
 from dash import (
     html,
     Input,
@@ -18,7 +31,8 @@ from dash import (
     ALL,
     MATCH,
     ctx,
-    dcc
+    dcc,
+    no_update
 )
 
 
@@ -48,6 +62,17 @@ roundbutton = {
 }
 
 
+def blank_fig():
+    """
+    Creates a blank figure with no axes, grid, or background.
+    """
+    fig = go.Figure()
+    fig.update_layout(template=None)
+    fig.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
+    fig.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
+
+    return fig
+
 
 def candidate_list(i, j):
     return  dbc.ListGroupItem("{} (labeled by {} person)".format(dirs[i], j))
@@ -56,6 +81,143 @@ def ranking_list(i, j):
     return  dbc.ListGroupItem("{} {} tomograms".format(i, j))
 
 
+
+#====================================== memoization ======================================
+# cache = Cache(app.server, config={
+#     'CACHE_TYPE': 'filesystem',
+#     'CACHE_DIR': 'cache-directory'
+# })
+
+# TIMEOUT = 60
+
+
+# @cache.memoize(timeout=TIMEOUT)
+# def prepare_images(run, bin=0):
+#     zarr_file_path = TOMO_FILE_PATH + run + '/VoxelSpacing10.000/denoised.zarr'
+#     image = zarr.open(zarr_file_path, 'r')
+#     return json.dumps(image[bin][:])
+
+
+# def load_images(run: str):
+#     return json.loads(prepare_images(run))
+
+
+# def clear_cache():
+#     cache.clear()
+
+def grid_inds(point, hw):
+    x, y, z = point
+    x //= 10
+    y //= 10
+    z //= 10
+    x += hw
+    y += hw
+    z += hw
+    return x, y, z
+
+
+def crop_image2d(image, point, hw):
+    x, y, z = grid_inds(point, hw)
+    return image[int(x)-hw:int(x)+hw+1, int(y)-hw:int(y)+hw+1, int(z)]
+
+def crop_image3d(image, point, hw):
+    x, y, z = grid_inds(point, hw)
+    return image[int(x)-hw:int(x)+hw+1, int(y)-hw:int(y)+hw+1, int(z)-hw:int(z)+hw+1]
+
+
+@lru_cache(maxsize=128)  # number of images
+def prepare_images2d(run, bin=0, hw=30):
+    data = TomogramDataset(run)
+    padded_image = np.pad(data.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')
+    dt = defaultdict(set)
+    for pick in data.picks:
+        try:
+            points = pick['points']
+            for point in points:
+                dt[pick['pickable_object_name']].add((point['location']['x'], \
+                                                      point['location']['y'], \
+                                                      point['location']['z'])) 
+        except:
+            pass
+    
+    
+    os.makedirs("./cache-directory", exist_ok=True)
+    # Create an LRU cache for the store with a maximum size of 100 MB
+    store = DirectoryStore(f'./cache-directory/{run}_2d_crops.zarr')
+    cache_store = LRUStoreCache(store, max_size=100 * 2**20)
+    root = zarr.group(store=store, overwrite=False)
+
+    
+    cropped_images_groups = {}
+    points_groups = defaultdict(list)
+    for particle, points in dt.items():
+        cropped_images = []
+        points_list = []
+        for p in points:
+            cropped_image = crop_image2d(padded_image, p, hw)
+            cropped_images.append(cropped_image)
+            points_list.append(p)
+
+        cropped_images = np.array(cropped_images)
+        print(cropped_images.shape)
+        # if particle not in root:
+        #     root.create_dataset(particle, data=cropped_images)
+        # else:
+        #     root[particle][:] = cropped_images
+        cropped_images_groups[particle] = cropped_images
+        points_groups[particle] = points_list
+        
+    return cropped_images_groups,  points_groups 
+    
+
+
+@lru_cache(maxsize=8)  # number of images
+def prepare_images3d(run, bin=0, hw=15):
+    data = TomogramDataset(run)
+    padded_image = np.pad(data.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')
+    dt = defaultdict(set)
+    for pick in data.picks:
+        try:
+            points = pick['points']
+            for point in points:
+                dt[pick['pickable_object_name']].add((point['location']['x'], \
+                                                      point['location']['y'], \
+                                                      point['location']['z'])) 
+        except:
+            pass
+    
+    
+    os.makedirs("./cache-directory", exist_ok=True)
+    # Create an LRU cache for the store with a maximum size of 100 MB
+    store = DirectoryStore(f'./cache-directory/{run}_3d_crops.zarr')
+    cache_store = LRUStoreCache(store, max_size=100 * 2**20)
+    root = zarr.group(store=store, overwrite=False)
+
+    
+    cropped_images_groups = {}
+    points_groups = defaultdict(list)
+    for particle, points in dt.items():
+        cropped_images = []
+        points_list = []
+        for p in points:
+            cropped_image = crop_image3d(padded_image, p, hw)
+            cropped_images.append(cropped_image)
+            points_list.append(p)
+
+        cropped_images = np.array(cropped_images)
+        print(cropped_images.shape)
+        # if particle not in root:
+        #     root.create_dataset(particle, data=cropped_images)
+        # else:
+        #     root[particle][:] = cropped_images
+        cropped_images_groups[particle] = cropped_images
+        points_groups[particle] = points_list
+        
+    return cropped_images_groups,  points_groups 
+
+
+
+############################################## Callbacks ##############################################
 @callback(
     Output("modal-help", "is_open"),
     Input("button-help", "n_clicks"),
@@ -67,37 +229,123 @@ def toggle_help_modal(n_clicks, is_open):
 
 
 @callback(
-    Output("modal-evaluation", "is_open"),
-    Output("modal-body-evaluation", "children"),
+    Output("tomogram-index", "data"),
     Input({"type": "tomogram-eval-bttn", "index": ALL}, "n_clicks"),
-    State("modal-evaluation", "is_open"),
     prevent_initial_call=True
 )
-def toggle_evaluation_modal(n_clicks, is_open):
-    changed_id = [p['prop_id'] for p in ctx.triggered][0].split(".")[0]
-    tomogram_id = json.loads(changed_id)["index"]
-    picks = dataset.load_picks(tomogram_id)
-    dt = defaultdict(list)
-    for pick in picks:
-        try:
-            points = pick['points']
-            for point in points:
-                dt['pickable_object_name'].append(pick['pickable_object_name'])
-                dt['user_id'].append(pick['user_id'])
-                dt['x'].append(point['location']['x']/10)
-                dt['y'].append(point['location']['y']/10)
-                dt['z'].append(point['location']['z']/10)
-                dt['size'].append(0.1)
-        except:
-            pass
-    
-    df = pd.DataFrame.from_dict(dt)
-    fig = px.scatter_3d(df, x='x', y='y', z='z', color='pickable_object_name', symbol='user_id', size='size', opacity=0.5)
-    
+def update_tomogram_index(n_clicks):
     if any(n_clicks):
-        return not is_open, [html.Div([dcc.Graph(figure=fig)])]
+        changed_id = [p['prop_id'] for p in ctx.triggered][0].split(".")[0]
+        if "index" in changed_id:
+            tomogram_index = json.loads(changed_id)["index"]
+            return tomogram_index
+
+
+@callback(
+    Output("modal-evaluation", "is_open"),
+    Output("collapse1", "is_open"),
+    Output("collapse2", "is_open"),
+    Output("fig1", "figure"),
+    Output("fig2", "figure"),
+    Output("image-slider", "max"),
+    Output("image-slider", "marks"),
+    Input("tabs", "active_tab"),
+    Input("tomogram-index", "data"),
+    Input("image-slider", "value"),
+    State("modal-evaluation", "is_open"),
+    State("fig1", "figure"),
+    State("fig2", "figure"),
+    prevent_initial_call=True
+)
+def toggle_3dplot_modal(at, tomogram_index, slider_value, is_open, fig1, fig2):
+    slider_max = 10
+    if tomogram_index:
+        if at == "tab-1":
+            dt = defaultdict(list)
+            for pick in TomogramDataset(tomogram_index).picks:
+                try:
+                    points = pick['points']
+                    for point in points:
+                        dt['pickable_object_name'].append(pick['pickable_object_name'])
+                        dt['user_id'].append(pick['user_id'])
+                        dt['x'].append(point['location']['x']/10)
+                        dt['y'].append(point['location']['y']/10)
+                        dt['z'].append(point['location']['z']/10)
+                        dt['size'].append(0.1)
+                except:
+                    pass
+            
+            #assert len(df) != 0, "Dataframe is empty. Please check the data." 
+            df = pd.DataFrame.from_dict(dt)
+            print(fig1)
+            # fig1.add_trace(go.Scatter3d(
+            #     x=df['x'], 
+            #     y=df['y'], 
+            #     z=df['t'],
+            #     marker=dict(
+            #         color=df['pickable_object_name'],
+            #         symbol=df['user_id'],
+            #         size=df['size'],
+            #     ),
+            #     opacity=0.5
+            #     ))
+            fig1 = px.scatter_3d(df, x='x', y='y', z='z', color='pickable_object_name', symbol='user_id', size='size', opacity=0.5)
+            return True, True, False, fig1,  blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}
+        elif at == "tab-2":
+            #print(f'slider_value {slider_value}')
+            cropped_image, points = prepare_images2d(tomogram_index)
+            #print(points['ribosome'])
+            fig2d = px.imshow(cropped_image['ribosome'][slider_value], binary_string=True)
+            slider_max = len(cropped_image['ribosome'])
+            fig2d.add_shape(type="circle",
+                xref="x", yref="y",
+                fillcolor="PaleTurquoise",
+                x0=29, y0=31, x1=31, y1=29,
+                line_color="LightSeaGreen",
+            )
+            fig2d.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
+            fig2d.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
+            return True, False, True, blank_fig(), fig2d, slider_max, {0: '0', slider_max: str(slider_max)}
+        elif at == "tab-3":
+            X, Y, Z = np.mgrid[0:1:31j, 0:1:31j, 0:1:31j]
+            cropped_volume, points = prepare_images3d(tomogram_index)
+            # fig3d = go.Figure(data=go.Volume(
+            #     x=X.flatten(),
+            #     y=Y.flatten(),
+            #     z=Z.flatten(),
+            #     value=cropped_volume['ribosome'][0].flatten(),
+            #     isomin=0,
+            #     isomax=1,
+            #     opacity=0.2, # needs to be small to see through all surfaces
+            #     surface_count=300, # needs to be a large number for good volume rendering
+            #     colorscale='gray',
+            #     ))
+            fig3d = go.Figure()
+            fig3d.add_trace(go.Isosurface(
+                                        x=X.flatten(),
+                                        y=Y.flatten(),
+                                        z=Z.flatten(), 
+                                        value=cropped_volume['ribosome'][0].flatten(),
+                                        isomin=0,
+                                        isomax=1,
+                                        opacity=0.2,
+                                        surface_count=1000, # needs to be a large number for good volume rendering
+                                        colorscale='gray',
+                                        ))
+            # fig3d.add_shape(type="circle",
+            #     xref="x", yref="y", zref="z",
+            #     fillcolor="PaleTurquoise",
+            #     x0=29, y0=31, z0=30, x1=31, y1=29, z1=30,
+            #     line_color="LightSeaGreen",
+            # )
+            # fig3d.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
+            # fig3d.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
+            # fig3d.update_zaxes(showgrid=False, showticklabels=False, zeroline=False)
+
+            return True, False, True,  blank_fig(),  fig3d, slider_max, {0: '0', slider_max: str(slider_max)}
     else:
-        return is_open, []
+        return False, False, False,  blank_fig(),  blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}
+
 
 
 @callback(
