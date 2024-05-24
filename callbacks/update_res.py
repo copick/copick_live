@@ -20,6 +20,7 @@ from utils.data_utils_threading import (
     dir2id, 
     COUNTER_FILE_PATH, 
     TOMO_FILE_PATH, 
+    CACHE_ROOT,
     TomogramDataset
 )
 from dash import (
@@ -140,10 +141,10 @@ def prepare_images2d(run, bin=0, hw=30):
         except:
             pass
     
-    
-    os.makedirs("./cache-directory", exist_ok=True)
+    cache_dir = CACHE_ROOT + 'cache-directory/'
+    os.makedirs(cache_dir, exist_ok=True)
     # Create an LRU cache for the store with a maximum size of 100 MB
-    store = DirectoryStore(f'./cache-directory/{run}_2d_crops.zarr')
+    store = DirectoryStore(f'{cache_dir}{run}_2d_crops.zarr')
     cache_store = LRUStoreCache(store, max_size=100 * 2**20)
     root = zarr.group(store=store, overwrite=False)
 
@@ -186,10 +187,10 @@ def prepare_images3d(run, bin=0, hw=15):
         except:
             pass
     
-    
-    os.makedirs("./cache-directory", exist_ok=True)
+    cache_dir = CACHE_ROOT + 'cache-directory/'
+    os.makedirs(cache_dir, exist_ok=True)
     # Create an LRU cache for the store with a maximum size of 100 MB
-    store = DirectoryStore(f'./cache-directory/{run}_3d_crops.zarr')
+    store = DirectoryStore(f'{cache_dir}{run}_3d_crops.zarr')
     cache_store = LRUStoreCache(store, max_size=100 * 2**20)
     root = zarr.group(store=store, overwrite=False)
 
