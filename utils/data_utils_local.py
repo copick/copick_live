@@ -14,7 +14,7 @@ PICK_FILE_PATH = '%s' % config['local_picks']['PICK_FILE_PATH'] + 'ExperimentRun
 TOMO_FILE_PATH = '%s' % config['local_tomos']['TOMO_FILE_PATH'] + 'ExperimentRuns/'
 CACHE_ROOT = '%s' % config['local_cache']['CACHE_ROOT']
 
-dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1,5) for j in range(1,10)]
+dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1,122) for j in range(1,10)]
 dir2id = {j:i for i,j in enumerate(dirs)}
 dir_set = set(dirs)
 
