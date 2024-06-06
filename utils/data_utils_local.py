@@ -8,13 +8,13 @@ import json, zarr
 
 config = configparser.ConfigParser()
 config.read(os.path.join(os.getcwd(), "config.ini"))
-COPICK_CONFIG_PATH = '%s' % config['copick']['COPICK_CONFIG_PATH']
-COUNTER_FILE_PATH = '%s' % config['counter']['COUNTER_FILE_PATH'] 
+COPICK_TEMPLATE_PATH = '%s' % config['copick_template']['COPICK_TEMPLATE_PATH']
+COUNTER_FILE_PATH = '%s' % config['counter_checkpoint']['COUNTER_FILE_PATH'] 
 PICK_FILE_PATH = '%s' % config['local_picks']['PICK_FILE_PATH'] + 'ExperimentRuns/'
 TOMO_FILE_PATH = '%s' % config['local_tomos']['TOMO_FILE_PATH'] + 'ExperimentRuns/'
 CACHE_ROOT = '%s' % config['local_cache']['CACHE_ROOT']
 
-dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1,122) for j in range(1,10)]
+dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1,5) for j in range(1,10)]
 dir2id = {j:i for i,j in enumerate(dirs)}
 dir_set = set(dirs)
 
@@ -189,10 +189,15 @@ class Dataset:
 
 
 class TomogramDataset:
-    def __init__(self, run: str, bin: int = 0):
-        self.pick_root = PICK_FILE_PATH + run + '/Picks'
-        self.tomo_root = TOMO_FILE_PATH + run + '/VoxelSpacing10.000/denoised.zarr'
-        self.bin = bin
+    def __init__(self):
+        self.pick_root = None
+        self.tomo_root = None
+
+    def load_tomogram(self, run: str=None, bin: int = 0):
+        if run is not None:
+            self.pick_root = PICK_FILE_PATH + run + '/Picks'
+            self.tomo_root = TOMO_FILE_PATH + run + '/VoxelSpacing10.000/denoised.zarr'
+            self.bin = bin
     
     @property
     def picks(self):
@@ -213,5 +218,6 @@ class TomogramDataset:
 
 
 
-dataset = Dataset(PICK_FILE_PATH, COPICK_CONFIG_PATH)
+dataset = Dataset(PICK_FILE_PATH, COPICK_TEMPLATE_PATH)
+tomogram_dataset = TomogramDataset()
 

@@ -22,20 +22,26 @@ def layout():
                         dbc.CardHeader([
                             DashIconify(icon="vscode-icons:folder-type-component", width=30, style={"margin": "3px"}),
                             'Evaluation',
+                            dbc.Button('Refresh List', 
+                                        id="refresh-button", 
+                                        #outline=True, 
+                                        color="primary",  
+                                        style = {"text-transform": "none", "fontSize": "0.85em", "width": "25%","height": "85%", "margin-left": "40%"},
+                                    )
                             ], 
                             style={"font-weight": "bold"}
                         ),
                         #dbc.Row(dbc.Button('Refresh', id="refresh-button", outline=True, color="primary", className="me-1", size="sm"), justify="center"),
                         dbc.CardBody(id='card-tomogram-evaluation', 
                                      children=[
-                                          html.Div(dbc.Button('Refresh List', 
-                                                        id="refresh-button", 
-                                                        outline=True, 
-                                                        color="primary", 
-                                                        className="me-1",  
-                                                        style = {"text-transform": "none"}),
-                                                    style ={'display': 'flex', 'justify-content': 'center', 'margin': '3px'},
-                                                ),
+                                        #   html.Div(dbc.Button('Refresh List', 
+                                        #                 id="refresh-button", 
+                                        #                 outline=True, 
+                                        #                 color="primary", 
+                                        #                 className="me-1",  
+                                        #                 style = {"text-transform": "none"}),
+                                        #             style ={'display': 'flex', 'justify-content': 'center', 'margin': '3px'},
+                                        #         ),
                                          html.Div(id='composition')
                                      ], 
                                      style={'overflowY': 'scroll'}

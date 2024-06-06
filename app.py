@@ -1,5 +1,6 @@
 import dash_bootstrap_components as dbc
 from dash import Dash, html, dcc
+from collections import defaultdict
 
 from callbacks.update_res import *  
 from components.header import layout as header
@@ -27,7 +28,8 @@ browser_cache =html.Div(
                 n_intervals=0
                 ),
             dcc.Store(id='tomogram-index', data=''),
-            dcc.Store(id='image-data', data=[])
+            dcc.Store(id='keybind-num', data=''),
+            dcc.Store(id='run-dt', data=defaultdict(list))
         ],
     )
 
@@ -45,8 +47,8 @@ app.layout = html.Div(
                                  ], 
                                  width=3), 
                         dbc.Col(ranking(), width=3),
-                        dbc.Col(composition(), width=2),
-                        dbc.Col(protein_sts(), width=4),
+                        dbc.Col(composition(), width=3),
+                        dbc.Col(protein_sts(), width=3),
                     ],
                     justify='center',
                     className="h-100",
@@ -62,5 +64,5 @@ app.layout = html.Div(
 
 
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8000, debug=False)
+    app.run_server(host="0.0.0.0", port=8000, debug=True)
 

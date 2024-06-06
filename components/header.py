@@ -9,7 +9,7 @@ button_help = dbc.Button(
     color="primary",
     id="button-help",
     className="me-1",
-    style={"text-transform": "none"},
+    style={"text-transform": "none", "fontSize": "0.85em"},
 )
 
 

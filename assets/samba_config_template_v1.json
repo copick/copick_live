@@ -67,12 +67,6 @@
             "radius": 130,
             "map_threshold": 0.0507,
             "trust_orientation": false
-        },
-        {
-            "name": "membrane",
-            "is_particle": false,
-            "label": 8,
-            "color": [100, 100, 100, 128]
         }
     ],
 

@@ -1,27 +1,27 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
-import json
+import json, time
 import pandas as pd
 from collections import defaultdict
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.executors.pool import ProcessPoolExecutor
-from flask_caching import Cache
-from app import app
 import zarr, os
 from functools import lru_cache 
 from zarr.storage import LRUStoreCache, DirectoryStore
 
+import time
+
 import numpy as np
-from utils.data_utils_threading import (
+from utils.data_utils_copick import copick_dataset
+from utils.data_utils_local import (
     dataset, 
     dirs, 
     dir2id, 
     COUNTER_FILE_PATH, 
     TOMO_FILE_PATH, 
     CACHE_ROOT,
-    TomogramDataset
+    tomogram_dataset
 )
 from dash import (
     html,
@@ -35,6 +35,7 @@ from dash import (
     dcc,
     no_update
 )
+from dash.exceptions import PreventUpdate
 
 
 
@@ -117,18 +118,20 @@ def grid_inds(point, hw):
     return x, y, z
 
 
-def crop_image2d(image, point, hw):
+def crop_image2d(image, point, hw, avg):
     x, y, z = grid_inds(point, hw)
-    return image[int(x)-hw:int(x)+hw+1, int(y)-hw:int(y)+hw+1, int(z)]
+    z_minus = max(int(z)-avg, hw)
+    z_plus = min(int(z)+avg+1, image.shape[0]-hw)
+    return np.mean(image[z_minus:z_plus, int(y)-hw:int(y)+hw+1, int(x)-hw:int(x)+hw+1], axis=0)  # (z, y, x) for copick coordinates
 
 def crop_image3d(image, point, hw):
     x, y, z = grid_inds(point, hw)
-    return image[int(x)-hw:int(x)+hw+1, int(y)-hw:int(y)+hw+1, int(z)-hw:int(z)+hw+1]
+    return image[int(z)-hw:int(z)+hw+1, int(y)-hw:int(y)+hw+1, int(x)-hw:int(x)+hw+1]
 
 
 @lru_cache(maxsize=128)  # number of images
-def prepare_images2d(run, bin=0, hw=30):
-    data = TomogramDataset(run)
+def prepare_images2d(run, bin=0, hw=60, avg=2):
+    data = tomogram_dataset
     padded_image = np.pad(data.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')
     dt = defaultdict(set)
     for pick in data.picks:
@@ -141,13 +144,12 @@ def prepare_images2d(run, bin=0, hw=30):
         except:
             pass
     
-    cache_dir = CACHE_ROOT + 'cache-directory/'
-    os.makedirs(cache_dir, exist_ok=True)
-    # Create an LRU cache for the store with a maximum size of 100 MB
-    store = DirectoryStore(f'{cache_dir}{run}_2d_crops.zarr')
-    cache_store = LRUStoreCache(store, max_size=100 * 2**20)
-    root = zarr.group(store=store, overwrite=False)
-
+    # cache_dir = CACHE_ROOT + 'cache-directory/'
+    # os.makedirs(cache_dir, exist_ok=True)
+    # # Create an LRU cache for the store with a maximum size of 100 MB
+    # store = DirectoryStore(f'{cache_dir}{run}_2d_crops.zarr')
+    # #cache_store = LRUStoreCache(store, max_size=100 * 2**20)
+    # root = zarr.group(store=store, overwrite=True)
     
     cropped_images_groups = {}
     points_groups = defaultdict(list)
@@ -155,18 +157,26 @@ def prepare_images2d(run, bin=0, hw=30):
         cropped_images = []
         points_list = []
         for p in points:
-            cropped_image = crop_image2d(padded_image, p, hw)
+            cropped_image = crop_image2d(padded_image, p, hw, avg)
             cropped_images.append(cropped_image)
             points_list.append(p)
 
         cropped_images = np.array(cropped_images)
-        print(cropped_images.shape)
         # if particle not in root:
         #     root.create_dataset(particle, data=cropped_images)
         # else:
         #     root[particle][:] = cropped_images
         cropped_images_groups[particle] = cropped_images
         points_groups[particle] = points_list
+    
+    
+    # for key, array in cropped_images_groups.items():
+    #     group = root.require_group('cropped_images')
+    #     group.create_dataset(name=key, data=array, compressor=zarr.Blosc(cname='zstd', clevel=3), chunks=(100, 100))
+
+    # for key, array in points_groups.items():
+    #     group = root.require_group('points')
+    #     group.create_dataset(name=key, data=array, compressor=zarr.Blosc(cname='zstd', clevel=3), chunks=(100, 100))
         
     return cropped_images_groups,  points_groups 
     
@@ -174,7 +184,7 @@ def prepare_images2d(run, bin=0, hw=30):
 
 @lru_cache(maxsize=8)  # number of images
 def prepare_images3d(run, bin=0, hw=15):
-    data = TomogramDataset(run)
+    data = tomogram_dataset
     padded_image = np.pad(data.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')
     dt = defaultdict(set)
     for pick in data.picks:
@@ -187,12 +197,12 @@ def prepare_images3d(run, bin=0, hw=15):
         except:
             pass
     
-    cache_dir = CACHE_ROOT + 'cache-directory/'
-    os.makedirs(cache_dir, exist_ok=True)
-    # Create an LRU cache for the store with a maximum size of 100 MB
-    store = DirectoryStore(f'{cache_dir}{run}_3d_crops.zarr')
-    cache_store = LRUStoreCache(store, max_size=100 * 2**20)
-    root = zarr.group(store=store, overwrite=False)
+    # cache_dir = CACHE_ROOT + 'cache-directory/'
+    # os.makedirs(cache_dir, exist_ok=True)
+    # # Create an LRU cache for the store with a maximum size of 100 MB
+    # store = DirectoryStore(f'{cache_dir}{run}_3d_crops.zarr')
+    # cache_store = LRUStoreCache(store, max_size=100 * 2**20)
+    # root = zarr.group(store=store, overwrite=False)
 
     
     cropped_images_groups = {}
@@ -206,7 +216,6 @@ def prepare_images3d(run, bin=0, hw=15):
             points_list.append(p)
 
         cropped_images = np.array(cropped_images)
-        print(cropped_images.shape)
         # if particle not in root:
         #     root.create_dataset(particle, data=cropped_images)
         # else:
@@ -229,6 +238,7 @@ def toggle_help_modal(n_clicks, is_open):
     return not is_open
 
 
+
 @callback(
     Output("tomogram-index", "data"),
     Input({"type": "tomogram-eval-bttn", "index": ALL}, "n_clicks"),
@@ -243,109 +253,276 @@ def update_tomogram_index(n_clicks):
 
 
 @callback(
-    Output("modal-evaluation", "is_open"),
     Output("collapse1", "is_open"),
     Output("collapse2", "is_open"),
+    Input("tabs", "active_tab"),
+    prevent_initial_call=True
+)
+def toggle_analysis_tabs(at):
+    if at == "tab-1":
+        return True, False
+    elif at == "tab-2":
+        return False, True
+
+
+@callback(
+    Output("fig2", "figure", allow_duplicate=True),
+    Output("image-slider", "value"),
+    Output("particle-dropdown", "value"),
+    Output("modal-evaluation", "is_open"),
+    Output("tabs", "active_tab"),
+    Output("choose-results", "children"),
+    Input("tomogram-index", "data"),
+    prevent_initial_call=True
+)
+def reset_analysis_popup(tomogram_index):
+    msg = f"Choose results for {tomogram_index}"
+    if tomogram_index is not None:
+        return blank_fig(), 0, None, True, "tab-1", msg
+    else:
+        return  blank_fig(), 0, None, False, "tab-1", msg
+
+
+@callback(
+    Output("run-dt", "data"),
+    Input("tomogram-index", "data"),
+    State("username-analysis", "value"),
+    prevent_initial_call=True
+)
+def load_tomogram_run(tomogram_index, username):
+    dt = defaultdict(list)
+    if tomogram_index is not None:
+        tomogram_dataset.load_tomogram(run=tomogram_index)
+        # for pick in tomogram_dataset.picks:
+        #     try:
+        #         points = pick['points']
+        #         for point in points:
+        #             dt['pickable_object_name'].append(pick['pickable_object_name'])
+        #             dt['user_id'].append(pick['user_id'])
+        #             dt['x'].append(point['location']['x']/10)
+        #             dt['y'].append(point['location']['y']/10)
+        #             dt['z'].append(point['location']['z']/10)
+        #             dt['size'].append(0.1)
+        #     except:
+        #         pass
+        # takes 18s for VPN
+        t1 = time.time()
+        copick_dataset.load_curr_run(run_name=tomogram_index)
+        # takes 0.2s
+        t2 = time.time()
+        print('find copick run in copick', t2-t1)
+        copick_dataset.load_local_tomogram_dataset(tomogram_dataset)
+
+    return dt
+
+@callback(
+    Output("image-slider", "value", allow_duplicate=True),
+    Input("particle-dropdown", "value"),
+    prevent_initial_call=True
+)
+def reset_slider(value):
+    return 0
+
+
+@callback(
+    Output("particle-dropdown", "options"),
     Output("fig1", "figure"),
     Output("fig2", "figure"),
     Output("image-slider", "max"),
     Output("image-slider", "marks"),
+    Output("crop-label", "children"),
+    #Output("assign-dropdown", "value"),
+    Output("image-slider", "value", allow_duplicate=True),
+    Output("keybind-num", "data"),
     Input("tabs", "active_tab"),
-    Input("tomogram-index", "data"),
     Input("image-slider", "value"),
-    State("modal-evaluation", "is_open"),
+    Input("crop-width", "value"),
+    Input("crop-avg", "value"),
+    Input("particle-dropdown", "value"),
+    Input("accept-bttn", "n_clicks"),
+    Input("reject-bttn", "n_clicks"),
+    Input("assign-bttn", "n_clicks"),
+    Input("username-analysis", "value"),
+    Input("keybind-event-listener", "event"),
+    Input("keybind-event-listener", "n_events"),
+    State("tomogram-index", "data"),
     State("fig1", "figure"),
     State("fig2", "figure"),
+    #State("assign-dropdown", "value"),
+    State("run-dt", "data"),
+    State("keybind-num", "data"),
     prevent_initial_call=True
 )
-def toggle_3dplot_modal(at, tomogram_index, slider_value, is_open, fig1, fig2):
+def update_analysis(
+    at, 
+    slider_value, 
+    crop_width, 
+    crop_avg, 
+    particle, 
+    accept_bttn, 
+    reject_bttn, 
+    assign_bttn, 
+    copicklive_username,
+    keybind_event_listener, 
+    n_events,
+    tomogram_index, 
+    fig1, 
+    fig2, 
+    #new_particle, 
+    dt,
+    kbn
+):
+    pressed_key = None
+    if ctx.triggered_id == "keybind-event-listener":
+        #user is going to type in the class creation/edit modals and we don't want to trigger this callback using keys
+        pressed_key = (
+            keybind_event_listener.get("key", None) if keybind_event_listener else None
+        )
+        if not pressed_key:
+            raise PreventUpdate
+        else:
+            print(f'pressed_key {pressed_key}')
+    
     slider_max = 10
+    changed_id = [p['prop_id'] for p in ctx.triggered][0]
+    # takes 0.35s on mac3
     if tomogram_index:
+        dt = defaultdict(list)
+        for pick in tomogram_dataset.picks:
+            try:
+                points = pick['points']
+                for point in points:
+                    dt['pickable_object_name'].append(pick['pickable_object_name'])
+                    dt['user_id'].append(pick['user_id'])
+                    dt['x'].append(point['location']['x']/10)
+                    dt['y'].append(point['location']['y']/10)
+                    dt['z'].append(point['location']['z']/10)
+                    dt['size'].append(0.1)
+            except:
+                pass
+        particle_dict = {k: k for k in sorted(dt['pickable_object_name'])}
         if at == "tab-1":
-            dt = defaultdict(list)
-            for pick in TomogramDataset(tomogram_index).picks:
-                try:
-                    points = pick['points']
-                    for point in points:
-                        dt['pickable_object_name'].append(pick['pickable_object_name'])
-                        dt['user_id'].append(pick['user_id'])
-                        dt['x'].append(point['location']['x']/10)
-                        dt['y'].append(point['location']['y']/10)
-                        dt['z'].append(point['location']['z']/10)
-                        dt['size'].append(0.1)
-                except:
-                    pass
-            
-            #assert len(df) != 0, "Dataframe is empty. Please check the data." 
             df = pd.DataFrame.from_dict(dt)
-            print(fig1)
-            # fig1.add_trace(go.Scatter3d(
-            #     x=df['x'], 
-            #     y=df['y'], 
-            #     z=df['t'],
-            #     marker=dict(
-            #         color=df['pickable_object_name'],
-            #         symbol=df['user_id'],
-            #         size=df['size'],
-            #     ),
-            #     opacity=0.5
-            #     ))
             fig1 = px.scatter_3d(df, x='x', y='y', z='z', color='pickable_object_name', symbol='user_id', size='size', opacity=0.5)
-            return True, True, False, fig1,  blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}
+            return particle_dict, fig1,  blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}, no_update, no_update, no_update
         elif at == "tab-2":
-            #print(f'slider_value {slider_value}')
-            cropped_image, points = prepare_images2d(tomogram_index)
-            #print(points['ribosome'])
-            fig2d = px.imshow(cropped_image['ribosome'][slider_value], binary_string=True)
-            slider_max = len(cropped_image['ribosome'])
-            fig2d.add_shape(type="circle",
-                xref="x", yref="y",
-                fillcolor="PaleTurquoise",
-                x0=29, y0=31, x1=31, y1=29,
-                line_color="LightSeaGreen",
-            )
-            fig2d.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
-            fig2d.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
-            return True, False, True, blank_fig(), fig2d, slider_max, {0: '0', slider_max: str(slider_max)}
-        elif at == "tab-3":
-            X, Y, Z = np.mgrid[0:1:31j, 0:1:31j, 0:1:31j]
-            cropped_volume, points = prepare_images3d(tomogram_index)
-            # fig3d = go.Figure(data=go.Volume(
-            #     x=X.flatten(),
-            #     y=Y.flatten(),
-            #     z=Z.flatten(),
-            #     value=cropped_volume['ribosome'][0].flatten(),
-            #     isomin=0,
-            #     isomax=1,
-            #     opacity=0.2, # needs to be small to see through all surfaces
-            #     surface_count=300, # needs to be a large number for good volume rendering
-            #     colorscale='gray',
-            #     ))
-            fig3d = go.Figure()
-            fig3d.add_trace(go.Isosurface(
-                                        x=X.flatten(),
-                                        y=Y.flatten(),
-                                        z=Z.flatten(), 
-                                        value=cropped_volume['ribosome'][0].flatten(),
-                                        isomin=0,
-                                        isomax=1,
-                                        opacity=0.2,
-                                        surface_count=1000, # needs to be a large number for good volume rendering
-                                        colorscale='gray',
-                                        ))
-            # fig3d.add_shape(type="circle",
-            #     xref="x", yref="y", zref="z",
-            #     fillcolor="PaleTurquoise",
-            #     x0=29, y0=31, z0=30, x1=31, y1=29, z1=30,
-            #     line_color="LightSeaGreen",
-            # )
-            # fig3d.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
-            # fig3d.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
-            # fig3d.update_zaxes(showgrid=False, showticklabels=False, zeroline=False)
+            
+            new_particle = None
+            if pressed_key in [str(i+1) for i in range(len(dataset._im_dataset['name']))]:
+                new_particle = dataset._im_dataset['name'][int(pressed_key)-1]
+            elif pressed_key == 's':
+                new_particle = kbn
 
-            return True, False, True,  blank_fig(),  fig3d, slider_max, {0: '0', slider_max: str(slider_max)}
+            copick_dataset.new_user_id(user_id=copicklive_username)
+            # loading zarr takes 6-8s for VPN
+            dim_z, dim_y, dim_x = tomogram_dataset.tomogram.shape
+            msg = f"Image crop width (max {min(dim_x, dim_y)})"
+            fig2 = blank_fig()
+            if crop_width is not None:
+                half_width = crop_width//2
+                if crop_avg is None:
+                    crop_avg = 0
+                cropped_image, points_group = prepare_images2d(tomogram_index, bin=0, hw=half_width, avg=crop_avg)
+                if particle in cropped_image:
+                    fig2 = px.imshow(cropped_image[particle][slider_value], binary_string=True)
+                    slider_max = len(cropped_image[particle])-1
+                    fig2.add_shape(type="circle",
+                        xref="x", yref="y",
+                        fillcolor="PaleTurquoise",
+                        x0=half_width-1, y0=half_width+1, x1=half_width+1, y1=half_width-1,
+                        line_color="LightSeaGreen",
+                    )
+                    fig2.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
+                    fig2.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
+
+            #pressed_key  = ''
+            copick_dataset.load_curr_point(point_id=slider_value, obj_name=particle)
+            if 'accept-bttn' in changed_id or pressed_key=='a':
+                copick_dataset.handle_accept()
+            elif 'reject-bttn' in changed_id or pressed_key=='d':
+                copick_dataset.handle_reject()
+            elif 'assign-bttn' in changed_id or pressed_key=='s':
+                copick_dataset.handle_assign(new_particle)
+
+            if 'accept-bttn' in changed_id or \
+               'reject-bttn' in changed_id or \
+               'assign-bttn' in changed_id or \
+               pressed_key in ['a', 'd', 's']:
+                slider_value += 1
+                fig2 = px.imshow(cropped_image[particle][slider_value], binary_string=True)
+                fig2.add_shape(type="circle",
+                    xref="x", yref="y",
+                    fillcolor="PaleTurquoise",
+                    x0=half_width-1, y0=half_width+1, x1=half_width+1, y1=half_width-1,
+                    line_color="LightSeaGreen",
+                )
+                fig2.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
+                fig2.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
+            
+            if pressed_key=='ArrowRight':
+                slider_value += 1
+                fig2 = px.imshow(cropped_image[particle][slider_value], binary_string=True)
+                fig2.add_shape(type="circle",
+                    xref="x", yref="y",
+                    fillcolor="PaleTurquoise",
+                    x0=half_width-1, y0=half_width+1, x1=half_width+1, y1=half_width-1,
+                    line_color="LightSeaGreen",
+                )
+                fig2.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
+                fig2.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
+            elif pressed_key=='ArrowLeft':
+                slider_value -= 1
+                fig2 = px.imshow(cropped_image[particle][slider_value], binary_string=True)
+                fig2.add_shape(type="circle",
+                    xref="x", yref="y",
+                    fillcolor="PaleTurquoise",
+                    x0=half_width-1, y0=half_width+1, x1=half_width+1, y1=half_width-1,
+                    line_color="LightSeaGreen",
+                )
+                fig2.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
+                fig2.update_yaxes(showgrid=False, showticklabels=False, zeroline=False) 
+
+            return particle_dict, blank_fig(), fig2, slider_max, {0: '0', slider_max: str(slider_max)}, msg, slider_value, new_particle
+        # elif at == "tab-3":
+        #     X, Y, Z = np.mgrid[0:1:31j, 0:1:31j, 0:1:31j]
+        #     cropped_volume, points = prepare_images3d(tomogram_index)
+        #     # fig3d = go.Figure(data=go.Volume(
+        #     #     x=X.flatten(),
+        #     #     y=Y.flatten(),
+        #     #     z=Z.flatten(),
+        #     #     value=cropped_volume['ribosome'][0].flatten(),
+        #     #     isomin=0,
+        #     #     isomax=1,
+        #     #     opacity=0.2, # needs to be small to see through all surfaces
+        #     #     surface_count=300, # needs to be a large number for good volume rendering
+        #     #     colorscale='gray',
+        #     #     ))
+        #     fig3d = go.Figure()
+        #     fig3d.add_trace(go.Isosurface(
+        #                                 x=X.flatten(),
+        #                                 y=Y.flatten(),
+        #                                 z=Z.flatten(), 
+        #                                 value=cropped_volume['ribosome'][0].flatten(),
+        #                                 isomin=0,
+        #                                 isomax=1,
+        #                                 opacity=0.2,
+        #                                 surface_count=1000, # needs to be a large number for good volume rendering
+        #                                 colorscale='gray',
+        #                                 reversescale=True
+        #                                 ))
+        #     # fig3d.add_shape(type="circle",
+        #     #     xref="x", yref="y", zref="z",
+        #     #     fillcolor="PaleTurquoise",
+        #     #     x0=29, y0=31, z0=30, x1=31, y1=29, z1=30,
+        #     #     line_color="LightSeaGreen",
+        #     # )
+        #     # fig3d.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
+        #     # fig3d.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
+        #     # fig3d.update_zaxes(showgrid=False, showticklabels=False, zeroline=False)
+
+        #     return True, False, True,  blank_fig(),  fig3d, slider_max, {0: '0', slider_max: str(slider_max)}
     else:
-        return False, False, False,  blank_fig(),  blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}
+        return dict(), blank_fig(),  blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}, no_update, no_update, no_update
 
 
 
@@ -405,7 +582,8 @@ def update_results(n):
                  color_discrete_map = data['colors'],
                  )
     fig.update(layout_showlegend=False)
-    candidates = dataset.candidates(100, random_sampling=False)
+    num_candidates = len(dirs) if len(dirs) < 100 else 100
+    candidates = dataset.candidates(num_candidates, random_sampling=False)
     num_per_person_ordered = dataset.num_per_person_ordered 
     label = f'Labeled {len(dataset.tomos_pickers)} out of 1000 tomograms'
     bar_val = round(len(dataset.tomos_pickers)/1000*100, 1)

@@ -1,6 +1,8 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
+from utils.data_utils_local import dataset
+from dash_extensions import EventListener
 
 def blank_fig():
     """
@@ -12,7 +14,6 @@ def blank_fig():
     fig.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
 
     return fig
-
 
 
 instructions = [dcc.Markdown('''
@@ -47,7 +48,6 @@ instructions = [dcc.Markdown('''
                             4. Press the ▼ ▼ ▼ button to copy the contents to the "editable" lower table.  
                             5. Select the Copick tab at the top right corner and choose a tool in the `Place Particles` session. Start editing by right click. Your picking results will be automatically saved.  
                             ''')
-
     ]
 
 
@@ -55,63 +55,73 @@ tabs = html.Div(
     [
         dbc.Tabs(
             [
-                dbc.Tab(label="Points visualization", tab_id="tab-1"),
+                dbc.Tab(label="Picked points visualization", tab_id="tab-1"),
                 dbc.Tab(label="2D Plane Inspection", tab_id="tab-2"),
-                dbc.Tab(label="3D Volume Inspection", tab_id="tab-3"),
+                #dbc.Tab(label="3D Volume Inspection", tab_id="tab-3"),
             ],
             id="tabs",
             active_tab="tab-1",
         ),
         html.Div([
-            dbc.Collapse(id="collapse1",is_open=False, children=[html.Div(dcc.Dropdown(["Pickathon results","Embedding model results"], 'Pickathon results', id='pick-dropdown'), style={'width':'30%', 'justify-content': 'right', 'margin-top': '20px'}),
-                                                                 dcc.Graph(id='fig1', figure=blank_fig())]),
-            dbc.Collapse(id="collapse2",is_open=False, children=dbc.Container([
-                                                                                dbc.Row(
-                                                                                    [
-                                                                                        dbc.Col([dcc.Graph(id='fig2', figure=blank_fig()),
-                                                                                                dbc.Row([
-                                                                                                            dbc.Col(dbc.Row(dbc.Button('Reject', id='prev-im2d', style={'width': '50%'}, disabled=False, color='danger'), justify='end')),
-                                                                                                            dbc.Col(dbc.Row(dbc.Button('Accept', id='next-im2d', style={'width': '50%'}, disabled=False, color='success'), justify='start'))
-                                                                                                        ],
-                                                                                                        justify='evenly'
-                                                                                                        ),
-                                                                                                 ], 
-                                                                                                width=4,
-                                                                                                align="center",
-                                                                                               ), 
+            dbc.Label("Choose results", id='choose-results', style={'margin-top': '35px', 'margin-left': '7px'}),
+            dcc.Dropdown(["Pickathon results"], 'Pickathon results', id='pick-dropdown', style={'width':'42%', 'justify-content': 'center', 'margin-bottom': '0px', 'margin-left': '4px'}),
+            dbc.Collapse(id="collapse1",is_open=False, children=dbc.Spinner(dcc.Graph(id='fig1', figure=blank_fig()), spinner_style={"width": "5rem", "height": "5rem"})),
+            dbc.Collapse(id="collapse2",is_open=False, children=dbc.Container([dbc.Row(
+                                                                                    [ 
                                                                                         dbc.Col([
-                                                                                                 dbc.Label(
-                                                                                                        "Please input your name",
-                                                                                                        className="mb-3",
-                                                                                                        #html_for='image-slider',
-                                                                                                    ),
-                                                                                                dbc.Input(id='username-eval', placeholder="e.g., john.doe", type="text"),
-                                                                                                dbc.Label(
-                                                                                                        "Please select a particle type",
-                                                                                                        className="mb-3",
-                                                                                                        #html_for='image-slider',
-                                                                                                    ),
-                                                                                                dcc.Dropdown(["apo-ferritin", "beta-amylase","beta-galactosidase", "ribosome", "thyroglobulin",  "virus-like-particle", "membrane-bound-protein"], 'ribosome', id='particle-dropdown'),
-                                                                                                dbc.Label("image width", className="mb-3"),
-                                                                                                dcc.Input(id="crop_width",type="number", placeholder="30", value =30),
-                                                                                                dbc.Label(
-                                                                                                        "Image Slider",
-                                                                                                        className="mb-3",
-                                                                                                        html_for='image-slider',
-                                                                                                    ),
-                                                                                                dcc.Slider(
-                                                                                                        id='image-slider',
-                                                                                                        min=0,
-                                                                                                        max=200,
-                                                                                                        value = 0,
-                                                                                                        step = 1,
-                                                                                                        updatemode='drag',
-                                                                                                        tooltip={"placement": "top", "always_visible": True},
-                                                                                                        marks={0: '0', 199: '199'},
-                                                                                                    ),
+                                                                                                dbc.Label("Please input your name", style={'margin-top': '-20px'}),
+                                                                                                dbc.Input(id='username-analysis', placeholder="e.g., john.doe", type="text", style={'width': '75%'}),
+                                                                                                dbc.Label("Please select a particle type", className="mt-3"),
+                                                                                                dcc.Dropdown(id='particle-dropdown', style={'width': '87%'}),
+                                                                                                dbc.Label(id='crop-label', children="Image crop size (max 100)", className="mt-3"),
+                                                                                                dcc.Input(id="crop-width",type="number", placeholder="30", value =60, min=1, step=1),
+                                                                                                dbc.Label("Average ±N neigbor layers", className="mt-3"),
+                                                                                                dcc.Input(id="crop-avg", type="number", placeholder="3", value =2, min=0, step=1),
+                                                                                                dbc.Label("Particle slider (press key < or >)", className="mt-3"),
+                                                                                                html.Div(dcc.Slider(
+                                                                                                            id='image-slider',
+                                                                                                            min=0,
+                                                                                                            max=200,
+                                                                                                            value = 0,
+                                                                                                            step = 1,
+                                                                                                            updatemode='drag',
+                                                                                                            tooltip={"placement": "top", "always_visible": True},
+                                                                                                            marks={0: '0', 199: '199'},
+                                                                                                        ), style={'width':'72%', 'margin-top': '10px'}),
                                                                                             ],
-                                                                                            width=4,
-                                                                                            align="center"),
+                                                                                            width=3,
+                                                                                            align="center"
+                                                                                        ),
+                                                                                        dbc.Col([
+                                                                                                    dcc.Graph(id='fig2', 
+                                                                                                           figure=blank_fig(),
+                                                                                                           style={
+                                                                                                                "width": "100%",
+                                                                                                                "height": "100%",
+                                                                                                            })
+                                                                                                ], 
+                                                                                                width=5,
+                                                                                                align="top",
+                                                                                        ),
+                                                                                        dbc.Col([
+                                                                                            dbc.Row([
+                                                                                                        dbc.Col(dbc.Row(dbc.Button('(D) Reject', id='reject-bttn', style={'width': '50%'}, color='danger', className="me-1"), justify='end')),
+                                                                                                        dbc.Col(dbc.Row(dbc.Button('(A) Accept', id='accept-bttn', style={'width': '50%'}, color='success', className="me-1"), justify='start'))
+                                                                                                    ],
+                                                                                                    justify='evenly',
+                                                                                                    style={'margin-bottom': '40px'}
+                                                                                                    ),
+                                                                                             dbc.Row([
+                                                                                                        dbc.Col(dbc.Row(dbc.Button('(S) Assign', id='assign-bttn', style={'width': '50%'}, color='primary', className="me-1"), justify='end')),
+                                                                                                        #dbc.Col(dbc.Row(dcc.Dropdown(id='assign-dropdown', options={k:k for k in dataset._im_dataset['name']}, style={'width': '75%', 'margin-left':'-3px'}), justify='start')),
+                                                                                                        dbc.Col(dbc.Row(dbc.ListGroup([dbc.ListGroupItem(f'({str(i+1)}) {k}') for i,k in enumerate(dataset._im_dataset['name'])]), justify='start'))
+                                                                                                    ],
+                                                                                                    justify='evenly'
+                                                                                                    ),
+                                                                                        ], 
+                                                                                        width=4, 
+                                                                                        align="right",
+                                                                                        ),
                                                                                     ],
                                                                                     justify='center',
                                                                                     align="center",
@@ -121,7 +131,16 @@ tabs = html.Div(
                                                                             fluid=True,
                                                                         ), 
                 ),                                                       
-                dbc.Collapse(id="collapse3",is_open=False, children=dcc.Graph(id='fig3', figure=blank_fig())),
+                #dbc.Collapse(id="collapse3",is_open=False, children=dcc.Graph(id='fig3', figure=blank_fig())),
+                EventListener(
+                    events=[
+                        {
+                            "event": "keydown",
+                            "props": ["key", "ctrlKey", "ctrlKey"],
+                        }
+                    ],
+                    id="keybind-event-listener",
+                ),
             ]),
         ]
     )
