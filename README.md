@@ -31,20 +31,27 @@ The file is used to generate a task list for each picker. It contains 3 keywords
 ``` 
 
 **The CopickLive configuration file**   
+The configuration file should be saved as `config.ini`.
 This file contains paths for finding the copick configuration template and checkpoint file. It also includes the directory path where copick (overlay) outputs are saved.
 
 ```
-[copick]
-COPICK_CONFIG_PATH = path_to_copick_config_file.json
+[copicklive_config]
+COPICKLIVE_CONFIG_PATH = path_to_copicklive_config_file.json
 
-[counter]
-COUNTER_FILE_PATH = path_to_checkpoint_file.json
+[copick_template]
+COPICK_TEMPLATE_PATH = path_to_copick_config_example_file.json
 
 [local_picks]
 PICK_FILE_PATH = path_to_copick_overlay_output
 
 [local_tomos]
 TOMO_FILE_PATH = path_to_copick_tomogram_data
+
+[local_cache]
+CACHE_ROOT = path_to_copicklive_cache_directory
+
+[counter_checkpoint]
+COUNTER_FILE_PATH = path_to_counter_checkpoint_file.json
 ```
 
 
