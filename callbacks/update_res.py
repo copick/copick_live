@@ -285,10 +285,9 @@ def reset_analysis_popup(tomogram_index):
 @callback(
     Output("run-dt", "data"),
     Input("tomogram-index", "data"),
-    State("username-analysis", "value"),
     prevent_initial_call=True
 )
-def load_tomogram_run(tomogram_index, username):
+def load_tomogram_run(tomogram_index):
     dt = defaultdict(list)
     if tomogram_index is not None:
         tomogram_dataset.load_tomogram(run=tomogram_index)
@@ -313,6 +312,7 @@ def load_tomogram_run(tomogram_index, username):
         copick_dataset.load_local_tomogram_dataset(tomogram_dataset)
 
     return dt
+
 
 @callback(
     Output("image-slider", "value", allow_duplicate=True),

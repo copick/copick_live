@@ -26,10 +26,19 @@ class CopickDataset:
 
         self.logs = defaultdict(list) # {'user_id':[], 'x': [], 'y':[], 'z':[], 'operation':['reject', 'accept', 'reassign'], 'start_class':[], 'end_class'[]}
 
+    
+    def _reset_states(self):
+        self.points_per_obj = defaultdict(list)
+        self.point_types = []
+        self.all_points = []
+        self.picked_id_per_obj = defaultdict(list)
+        self.picked_points_per_obj = defaultdict(list)
+    
 
     def load_local_tomogram_dataset(self, local_tomogram_dataset=None):
         if local_tomogram_dataset is not None:
             self.data = local_tomogram_dataset
+            self._reset_states()
             for pick in self.data.picks:
                 if 'points' in pick:
                     points = pick['points']
@@ -40,7 +49,7 @@ class CopickDataset:
                                                 point['location']['y'], \
                                                 point['location']['z']))
 
-    
+
     def _store_points(self, obj_name=None, session_id='18'):
         if obj_name is not None:
             self.picks = self.run.get_picks(object_name=obj_name, user_id=self.root.user_id, session_id=session_id)
@@ -82,6 +91,7 @@ class CopickDataset:
     
     
     def log_operation(self, operation=None, old_obj_name=None, new_obj_name=None):
+        self.logs = defaultdict(list)
         if os.path.exists('logs.csv') == False:
             self.logs['run_name'].append(self.run_name)
             self.logs['user_id'].append(self.root.config.user_id)
@@ -96,7 +106,7 @@ class CopickDataset:
         df = pd.read_csv('logs.csv', sep='\t')
         self.logs = df.to_dict('list') if len(df) else defaultdict(list) 
         #{'user_id':[], 'x': [], 'y':[], 'z':[], 'operation':['reject', 'accept', 'reassign'], 'start_class':[], 'end_class'[]}
-        print(f'self.logs\n {self.logs}')
+        #print(f'self.logs\n {self.logs}')
         if operation is not None and old_obj_name is not None and new_obj_name is not None:
             self.logs['run_name'].append(self.run_name)
             self.logs['user_id'].append(self.root.config.user_id)
