@@ -12,15 +12,13 @@ from zarr.storage import LRUStoreCache, DirectoryStore
 import time
 
 import numpy as np
-from utils.data_utils_copick import copick_dataset
-from utils.data_utils_local import (
+from utils.copick_dataset import copick_dataset
+from utils.local_dataset import (
     dataset, 
     dirs, 
     dir2id, 
     COUNTER_FILE_PATH, 
-    TOMO_FILE_PATH, 
     CACHE_ROOT,
-    tomogram_dataset
 )
 from dash import (
     html,
@@ -106,8 +104,8 @@ def ranking_list(i, j):
 # def clear_cache():
 #     cache.clear()
 
-def grid_inds(point, hw):
-    x, y, z = point
+def grid_inds(copick_loc, hw):
+    x, y, z = copick_loc.x, copick_loc.y, copick_loc.z
     x //= 10
     y //= 10
     z //= 10
@@ -117,112 +115,60 @@ def grid_inds(point, hw):
     return x, y, z
 
 
-def crop_image2d(image, point, hw, avg):
-    x, y, z = grid_inds(point, hw)
+def crop_image2d(image, copick_loc, hw, avg):
+    x, y, z = grid_inds(copick_loc, hw)
     z_minus = max(int(z)-avg, hw)
     z_plus = min(int(z)+avg+1, image.shape[0]-hw)
     return np.mean(image[z_minus:z_plus, int(y)-hw:int(y)+hw+1, int(x)-hw:int(x)+hw+1], axis=0)  # (z, y, x) for copick coordinates
 
-def crop_image3d(image, point, hw):
-    x, y, z = grid_inds(point, hw)
+def crop_image3d(image, copick_loc, hw):
+    x, y, z = grid_inds(copick_loc, hw)
     return image[int(z)-hw:int(z)+hw+1, int(y)-hw:int(y)+hw+1, int(x)-hw:int(x)+hw+1]
 
 
 @lru_cache(maxsize=128)  # number of images
 def prepare_images2d(run, bin=0, hw=60, avg=2):
-    data = tomogram_dataset
-    padded_image = np.pad(data.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')
-    dt = defaultdict(set)
-    for pick in data.picks:
-        try:
-            points = pick['points']
-            for point in points:
-                dt[pick['pickable_object_name']].add((point['location']['x'], \
-                                                      point['location']['y'], \
-                                                      point['location']['z'])) 
-        except:
-            pass
-    
+    padded_image = np.pad(copick_dataset.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')    
     # cache_dir = CACHE_ROOT + 'cache-directory/'
     # os.makedirs(cache_dir, exist_ok=True)
     # # Create an LRU cache for the store with a maximum size of 100 MB
     # store = DirectoryStore(f'{cache_dir}{run}_2d_crops.zarr')
     # #cache_store = LRUStoreCache(store, max_size=100 * 2**20)
     # root = zarr.group(store=store, overwrite=True)
-    
     cropped_images_groups = {}
-    points_groups = defaultdict(list)
-    for particle, points in dt.items():
+    for particle, ids in copick_dataset._points_per_obj.items():
         cropped_images = []
-        points_list = []
-        for p in points:
-            cropped_image = crop_image2d(padded_image, p, hw, avg)
+        for id in ids:
+            cropped_image = crop_image2d(padded_image, copick_dataset._all_points[id].location, hw, avg)
             cropped_images.append(cropped_image)
-            points_list.append(p)
 
         cropped_images = np.array(cropped_images)
-        # if particle not in root:
-        #     root.create_dataset(particle, data=cropped_images)
-        # else:
-        #     root[particle][:] = cropped_images
         cropped_images_groups[particle] = cropped_images
-        points_groups[particle] = points_list
-    
-    
-    # for key, array in cropped_images_groups.items():
-    #     group = root.require_group('cropped_images')
-    #     group.create_dataset(name=key, data=array, compressor=zarr.Blosc(cname='zstd', clevel=3), chunks=(100, 100))
-
-    # for key, array in points_groups.items():
-    #     group = root.require_group('points')
-    #     group.create_dataset(name=key, data=array, compressor=zarr.Blosc(cname='zstd', clevel=3), chunks=(100, 100))
         
-    return cropped_images_groups,  points_groups 
+    return cropped_images_groups
     
 
 
 @lru_cache(maxsize=8)  # number of images
 def prepare_images3d(run, bin=0, hw=15):
-    data = tomogram_dataset
-    padded_image = np.pad(data.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')
-    dt = defaultdict(set)
-    for pick in data.picks:
-        try:
-            points = pick['points']
-            for point in points:
-                dt[pick['pickable_object_name']].add((point['location']['x'], \
-                                                      point['location']['y'], \
-                                                      point['location']['z'])) 
-        except:
-            pass
-    
+    padded_image = np.pad(copick_dataset.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')
     # cache_dir = CACHE_ROOT + 'cache-directory/'
     # os.makedirs(cache_dir, exist_ok=True)
     # # Create an LRU cache for the store with a maximum size of 100 MB
     # store = DirectoryStore(f'{cache_dir}{run}_3d_crops.zarr')
     # cache_store = LRUStoreCache(store, max_size=100 * 2**20)
     # root = zarr.group(store=store, overwrite=False)
-
-    
     cropped_images_groups = {}
-    points_groups = defaultdict(list)
-    for particle, points in dt.items():
+    for particle, ids in copick_dataset._points_per_obj.items():
         cropped_images = []
-        points_list = []
-        for p in points:
-            cropped_image = crop_image3d(padded_image, p, hw)
+        for id in ids:
+            cropped_image = crop_image3d(padded_image, copick_dataset._all_points[id].location, hw)
             cropped_images.append(cropped_image)
-            points_list.append(p)
 
         cropped_images = np.array(cropped_images)
-        # if particle not in root:
-        #     root.create_dataset(particle, data=cropped_images)
-        # else:
-        #     root[particle][:] = cropped_images
         cropped_images_groups[particle] = cropped_images
-        points_groups[particle] = points_list
         
-    return cropped_images_groups,  points_groups 
+    return cropped_images_groups
 
 
 
@@ -290,26 +236,13 @@ def reset_analysis_popup(tomogram_index):
 def load_tomogram_run(tomogram_index):
     dt = defaultdict(list)
     if tomogram_index is not None:
-        tomogram_dataset.load_tomogram(run=tomogram_index)
-        # for pick in tomogram_dataset.picks:
-        #     try:
-        #         points = pick['points']
-        #         for point in points:
-        #             dt['pickable_object_name'].append(pick['pickable_object_name'])
-        #             dt['user_id'].append(pick['user_id'])
-        #             dt['x'].append(point['location']['x']/10)
-        #             dt['y'].append(point['location']['y']/10)
-        #             dt['z'].append(point['location']['z']/10)
-        #             dt['size'].append(0.1)
-        #     except:
-        #         pass
         # takes 18s for VPN
         t1 = time.time()
         copick_dataset.load_curr_run(run_name=tomogram_index)
         # takes 0.2s
         t2 = time.time()
         print('find copick run in copick', t2-t1)
-        copick_dataset.load_local_tomogram_dataset(tomogram_dataset)
+        
 
     return dt
 
@@ -330,7 +263,6 @@ def reset_slider(value):
     Output("image-slider", "max"),
     Output("image-slider", "marks"),
     Output("crop-label", "children"),
-    #Output("assign-dropdown", "value"),
     Output("image-slider", "value", allow_duplicate=True),
     Output("keybind-num", "data"),
     Input("tabs", "active_tab"),
@@ -386,42 +318,34 @@ def update_analysis(
     changed_id = [p['prop_id'] for p in ctx.triggered][0]
     # takes 0.35s on mac3
     if tomogram_index:
-        dt = defaultdict(list)
-        for pick in tomogram_dataset.picks:
-            try:
-                points = pick['points']
-                for point in points:
-                    dt['pickable_object_name'].append(pick['pickable_object_name'])
-                    dt['user_id'].append(pick['user_id'])
-                    dt['x'].append(point['location']['x']/10)
-                    dt['y'].append(point['location']['y']/10)
-                    dt['z'].append(point['location']['z']/10)
-                    dt['size'].append(0.1)
-            except:
-                pass
-        particle_dict = {k: k for k in sorted(dt['pickable_object_name'])}
+        #time.sleep(7)
+        #particle_dict = {k: k for k in sorted(set(copick_dataset.dt['pickable_object_name']))}
         if at == "tab-1":
-            df = pd.DataFrame.from_dict(dt)
+            time.sleep(2)
+            particle_dict = {k: k for k in sorted(set(copick_dataset.dt['pickable_object_name']))}
+            df = pd.DataFrame.from_dict(copick_dataset.dt)
             fig1 = px.scatter_3d(df, x='x', y='y', z='z', color='pickable_object_name', symbol='user_id', size='size', opacity=0.5)
             return particle_dict, fig1,  blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}, no_update, no_update, no_update
         elif at == "tab-2":
-            
             new_particle = None
             if pressed_key in [str(i+1) for i in range(len(dataset._im_dataset['name']))]:
                 new_particle = dataset._im_dataset['name'][int(pressed_key)-1]
             elif pressed_key == 's':
                 new_particle = kbn
 
+            
             copick_dataset.new_user_id(user_id=copicklive_username)
             # loading zarr takes 6-8s for VPN
-            dim_z, dim_y, dim_x = tomogram_dataset.tomogram.shape
+            particle_dict = {k: k for k in sorted(set(copick_dataset.dt['pickable_object_name']))}
+            dim_z, dim_y, dim_x = copick_dataset.tomogram.shape
             msg = f"Image crop width (max {min(dim_x, dim_y)})"
+            print(msg)
             fig2 = blank_fig()
             if crop_width is not None:
                 half_width = crop_width//2
                 if crop_avg is None:
                     crop_avg = 0
-                cropped_image, points_group = prepare_images2d(tomogram_index, bin=0, hw=half_width, avg=crop_avg)
+                cropped_image = prepare_images2d(tomogram_index, bin=0, hw=half_width, avg=crop_avg)
                 if particle in cropped_image:
                     fig2 = px.imshow(cropped_image[particle][slider_value], binary_string=True)
                     slider_max = len(cropped_image[particle])-1

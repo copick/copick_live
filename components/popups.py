@@ -1,7 +1,7 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
-from utils.data_utils_local import dataset
+from utils.local_dataset import dataset
 from dash_extensions import EventListener
 
 def blank_fig():

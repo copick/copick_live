@@ -7,4 +7,5 @@ dash-iconify==0.1.2
 Flask==2.2.5
 numpy
 apscheduler
-copick[all]
+#copick[all]
+git+https://github.com/uermel/copick.git
