@@ -127,7 +127,7 @@ def prepare_images2d(run=None, particle=None, hw=60, avg=2):
     # root = zarr.group(store=store, overwrite=True)
     cropped_image_batch = []
     if particle in copick_dataset.points_per_obj:
-        point_ids = copick_dataset.points_per_obj[particle]
+        point_ids = [i[0] for i in copick_dataset.points_per_obj[particle]]
         point_objs = [copick_dataset.all_points[id] for id in point_ids]
         for point_obj in point_objs:
             cropped_image = crop_image2d(padded_image, point_obj.location, hw, avg)
@@ -203,7 +203,7 @@ def load_tomogram_run(tomogram_index):
     if tomogram_index is not None:
         # takes 18s for VPN
         t1 = time.time()
-        copick_dataset.load_curr_run(run_name=tomogram_index)
+        copick_dataset.load_curr_run(run_name=tomogram_index, sort_by_score=True)
         # takes 0.2s
         t2 = time.time()
         print('find copick run in copick', t2-t1)
@@ -244,8 +244,6 @@ def reset_slider(value):
     State("tomogram-index", "data"),
     State("fig1", "figure"),
     State("fig2", "figure"),
-    #State("assign-dropdown", "value"),
-    State("run-dt", "data"),
     State("keybind-num", "data"),
     prevent_initial_call=True
 )
@@ -264,8 +262,6 @@ def update_analysis(
     tomogram_index, 
     fig1, 
     fig2, 
-    #new_particle, 
-    dt,
     kbn
 ):
     pressed_key = None

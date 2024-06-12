@@ -26,7 +26,7 @@ class CopickDataset:
         # variables for storing points in the current run
         self.all_points = []  #[point_obj,...] unique pick objs from all pickers
         self._point_types = []  #['ribosome',...]
-        self.points_per_obj = defaultdict(list) # {'ribosome': [0,2,3...],...}
+        self.points_per_obj = defaultdict(list) # {'ribosome': [(0,0.12),(2,0.33),(3,0.27...],...} (index, score)
         self.all_points_locations = set() # {(x,y,z),...} a mask to check if a point is duplicated
         # variables for storing picked points in the current run
         self._picked_id_per_obj = defaultdict(list) # {'ribosome': [0,3...],...}
@@ -47,7 +47,7 @@ class CopickDataset:
         
 
     
-    def load_curr_run(self, run_name=None):
+    def load_curr_run(self, run_name=None, sort_by_score=False, reverse=False):
         if run_name is not None:
             self._reset_states()
             self.run_name = run_name
@@ -63,16 +63,21 @@ class CopickDataset:
                     self.dt['z'].append(float(point.location.z)/10)
                     self.dt['size'].append(0.1)
                     if (point.location.x, point.location.y, point.location.z) not in self.all_points_locations:
-                        self.points_per_obj[pick.pickable_object_name].append(len(self.all_points))
+                        self.points_per_obj[pick.pickable_object_name].append((len(self.all_points), point.score))
                         self._point_types.append(pick.pickable_object_name)
                         self.all_points.append(point)
                         self.all_points_locations.add((point.location.x, point.location.y, point.location.z))
+      
+            if sort_by_score:
+                for k,values in self.points_per_obj.items():
+                    if len(values):
+                        values.sort(key=lambda x: x[1], reverse=reverse) # reverse=Fasle, ascending order
 
             tomogram = _run.get_voxel_spacing(10).get_tomogram("denoised")
             # Access the data
             group = zarr.open(tomogram.zarr())
-            _, array = list(group.arrays())[0]  
-            self.tomogram = array[:] # highest resolution bin=0
+            _, array = list(group.arrays())[0]  # highest resolution bin=0
+            self.tomogram = array[:] 
 
 
     def _store_points(self, obj_name=None, session_id='18'):
@@ -95,7 +100,7 @@ class CopickDataset:
         if point_id is not None and obj_name is not None:   
             self.pickable_obj_name = obj_name 
             print("Creating current pick point")
-            self.current_point = self.points_per_obj[obj_name][point_id]   # current point index
+            self.current_point = self.points_per_obj[obj_name][point_id][0]   # current point index
             self.current_point_obj = self.all_points[self.current_point]
     
     
