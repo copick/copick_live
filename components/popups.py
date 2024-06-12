@@ -163,6 +163,7 @@ def layout():
                 ], 
                 id="modal-evaluation",
                 is_open=False,
-                size="xl"
+                centered=True,
+                size='xl'
             ),
     ])
