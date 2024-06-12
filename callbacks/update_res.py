@@ -1,5 +1,4 @@
 import plotly.express as px
-import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
 import json, time
 import pandas as pd
@@ -12,7 +11,12 @@ from zarr.storage import LRUStoreCache, DirectoryStore
 import time
 
 import numpy as np
+
 from utils.copick_dataset import copick_dataset
+from utils.plot_utils import (
+    plot_crop_image,
+    blank_fig
+)
 from utils.local_dataset import (
     dataset, 
     dirs, 
@@ -61,17 +65,6 @@ roundbutton = {
 }
 
 
-def blank_fig():
-    """
-    Creates a blank figure with no axes, grid, or background.
-    """
-    fig = go.Figure()
-    fig.update_layout(template=None)
-    fig.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
-    fig.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
-
-    return fig
-
 
 def candidate_list(i, j):
     return  dbc.ListGroupItem("{} (labeled by {} person)".format(dirs[i], j))
@@ -119,15 +112,12 @@ def crop_image2d(image, copick_loc, hw, avg):
     x, y, z = grid_inds(copick_loc, hw)
     z_minus = max(int(z)-avg, hw)
     z_plus = min(int(z)+avg+1, image.shape[0]-hw)
-    return np.mean(image[z_minus:z_plus, int(y)-hw:int(y)+hw+1, int(x)-hw:int(x)+hw+1], axis=0)  # (z, y, x) for copick coordinates
-
-def crop_image3d(image, copick_loc, hw):
-    x, y, z = grid_inds(copick_loc, hw)
-    return image[int(z)-hw:int(z)+hw+1, int(y)-hw:int(y)+hw+1, int(x)-hw:int(x)+hw+1]
+    out = np.mean(image[z_minus:z_plus, int(y)-hw:int(y)+hw+1, int(x)-hw:int(x)+hw+1], axis=0)  # (z, y, x) for copick coordinates
+    return np.swapaxes(out, 1, 0)  # change back to (z, x, y) for plotting, in accordance with ChimeraX after 90 deg clockwise rotation.
 
 
 @lru_cache(maxsize=128)  # number of images
-def prepare_images2d(run, bin=0, hw=60, avg=2):
+def prepare_images2d(run=None, particle=None, hw=60, avg=2):
     padded_image = np.pad(copick_dataset.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')    
     # cache_dir = CACHE_ROOT + 'cache-directory/'
     # os.makedirs(cache_dir, exist_ok=True)
@@ -135,40 +125,15 @@ def prepare_images2d(run, bin=0, hw=60, avg=2):
     # store = DirectoryStore(f'{cache_dir}{run}_2d_crops.zarr')
     # #cache_store = LRUStoreCache(store, max_size=100 * 2**20)
     # root = zarr.group(store=store, overwrite=True)
-    cropped_images_groups = {}
-    for particle, ids in copick_dataset._points_per_obj.items():
-        cropped_images = []
-        for id in ids:
-            cropped_image = crop_image2d(padded_image, copick_dataset._all_points[id].location, hw, avg)
-            cropped_images.append(cropped_image)
-
-        cropped_images = np.array(cropped_images)
-        cropped_images_groups[particle] = cropped_images
+    cropped_image_batch = []
+    if particle in copick_dataset.points_per_obj:
+        point_ids = copick_dataset.points_per_obj[particle]
+        point_objs = [copick_dataset.all_points[id] for id in point_ids]
+        for point_obj in point_objs:
+            cropped_image = crop_image2d(padded_image, point_obj.location, hw, avg)
+            cropped_image_batch.append(cropped_image)
         
-    return cropped_images_groups
-    
-
-
-@lru_cache(maxsize=8)  # number of images
-def prepare_images3d(run, bin=0, hw=15):
-    padded_image = np.pad(copick_dataset.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')
-    # cache_dir = CACHE_ROOT + 'cache-directory/'
-    # os.makedirs(cache_dir, exist_ok=True)
-    # # Create an LRU cache for the store with a maximum size of 100 MB
-    # store = DirectoryStore(f'{cache_dir}{run}_3d_crops.zarr')
-    # cache_store = LRUStoreCache(store, max_size=100 * 2**20)
-    # root = zarr.group(store=store, overwrite=False)
-    cropped_images_groups = {}
-    for particle, ids in copick_dataset._points_per_obj.items():
-        cropped_images = []
-        for id in ids:
-            cropped_image = crop_image3d(padded_image, copick_dataset._all_points[id].location, hw)
-            cropped_images.append(cropped_image)
-
-        cropped_images = np.array(cropped_images)
-        cropped_images_groups[particle] = cropped_images
-        
-    return cropped_images_groups
+    return np.array(cropped_image_batch)
 
 
 
@@ -333,30 +298,21 @@ def update_analysis(
             elif pressed_key == 's':
                 new_particle = kbn
 
-            
             copick_dataset.new_user_id(user_id=copicklive_username)
+            if particle in copick_dataset.points_per_obj:
+                slider_max = len(copick_dataset.points_per_obj[particle]) - 1
             # loading zarr takes 6-8s for VPN
             particle_dict = {k: k for k in sorted(set(copick_dataset.dt['pickable_object_name']))}
             dim_z, dim_y, dim_x = copick_dataset.tomogram.shape
             msg = f"Image crop width (max {min(dim_x, dim_y)})"
-            print(msg)
             fig2 = blank_fig()
             if crop_width is not None:
                 half_width = crop_width//2
                 if crop_avg is None:
                     crop_avg = 0
-                cropped_image = prepare_images2d(tomogram_index, bin=0, hw=half_width, avg=crop_avg)
-                if particle in cropped_image:
-                    fig2 = px.imshow(cropped_image[particle][slider_value], binary_string=True)
-                    slider_max = len(cropped_image[particle])-1
-                    fig2.add_shape(type="circle",
-                        xref="x", yref="y",
-                        fillcolor="PaleTurquoise",
-                        x0=half_width-1, y0=half_width+1, x1=half_width+1, y1=half_width-1,
-                        line_color="LightSeaGreen",
-                    )
-                    fig2.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
-                    fig2.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
+                cropped_image_batch = prepare_images2d(run=tomogram_index, particle=particle, hw=half_width, avg=crop_avg)
+                if len(cropped_image_batch):
+                    fig2 = plot_crop_image(cropped_image_batch[slider_value], half_width)
 
             #pressed_key  = ''
             copick_dataset.load_curr_point(point_id=slider_value, obj_name=particle)
@@ -372,78 +328,16 @@ def update_analysis(
                'assign-bttn' in changed_id or \
                pressed_key in ['a', 'd', 's']:
                 slider_value += 1
-                fig2 = px.imshow(cropped_image[particle][slider_value], binary_string=True)
-                fig2.add_shape(type="circle",
-                    xref="x", yref="y",
-                    fillcolor="PaleTurquoise",
-                    x0=half_width-1, y0=half_width+1, x1=half_width+1, y1=half_width-1,
-                    line_color="LightSeaGreen",
-                )
-                fig2.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
-                fig2.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
+                fig2 = plot_crop_image(cropped_image_batch[slider_value], half_width)
             
             if pressed_key=='ArrowRight':
                 slider_value += 1
-                fig2 = px.imshow(cropped_image[particle][slider_value], binary_string=True)
-                fig2.add_shape(type="circle",
-                    xref="x", yref="y",
-                    fillcolor="PaleTurquoise",
-                    x0=half_width-1, y0=half_width+1, x1=half_width+1, y1=half_width-1,
-                    line_color="LightSeaGreen",
-                )
-                fig2.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
-                fig2.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
+                fig2 = plot_crop_image(cropped_image_batch[slider_value], half_width)
             elif pressed_key=='ArrowLeft':
                 slider_value -= 1
-                fig2 = px.imshow(cropped_image[particle][slider_value], binary_string=True)
-                fig2.add_shape(type="circle",
-                    xref="x", yref="y",
-                    fillcolor="PaleTurquoise",
-                    x0=half_width-1, y0=half_width+1, x1=half_width+1, y1=half_width-1,
-                    line_color="LightSeaGreen",
-                )
-                fig2.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
-                fig2.update_yaxes(showgrid=False, showticklabels=False, zeroline=False) 
+                fig2 = plot_crop_image(cropped_image_batch[slider_value], half_width)
 
             return particle_dict, blank_fig(), fig2, slider_max, {0: '0', slider_max: str(slider_max)}, msg, slider_value, new_particle
-        # elif at == "tab-3":
-        #     X, Y, Z = np.mgrid[0:1:31j, 0:1:31j, 0:1:31j]
-        #     cropped_volume, points = prepare_images3d(tomogram_index)
-        #     # fig3d = go.Figure(data=go.Volume(
-        #     #     x=X.flatten(),
-        #     #     y=Y.flatten(),
-        #     #     z=Z.flatten(),
-        #     #     value=cropped_volume['ribosome'][0].flatten(),
-        #     #     isomin=0,
-        #     #     isomax=1,
-        #     #     opacity=0.2, # needs to be small to see through all surfaces
-        #     #     surface_count=300, # needs to be a large number for good volume rendering
-        #     #     colorscale='gray',
-        #     #     ))
-        #     fig3d = go.Figure()
-        #     fig3d.add_trace(go.Isosurface(
-        #                                 x=X.flatten(),
-        #                                 y=Y.flatten(),
-        #                                 z=Z.flatten(), 
-        #                                 value=cropped_volume['ribosome'][0].flatten(),
-        #                                 isomin=0,
-        #                                 isomax=1,
-        #                                 opacity=0.2,
-        #                                 surface_count=1000, # needs to be a large number for good volume rendering
-        #                                 colorscale='gray',
-        #                                 reversescale=True
-        #                                 ))
-        #     # fig3d.add_shape(type="circle",
-        #     #     xref="x", yref="y", zref="z",
-        #     #     fillcolor="PaleTurquoise",
-        #     #     x0=29, y0=31, z0=30, x1=31, y1=29, z1=30,
-        #     #     line_color="LightSeaGreen",
-        #     # )
-        #     # fig3d.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
-        #     # fig3d.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
-        #     # fig3d.update_zaxes(showgrid=False, showticklabels=False, zeroline=False)
-
-        #     return True, False, True,  blank_fig(),  fig3d, slider_max, {0: '0', slider_max: str(slider_max)}
     else:
         return dict(), blank_fig(),  blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}, no_update, no_update, no_update
 

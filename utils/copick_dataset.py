@@ -24,10 +24,10 @@ class CopickDataset:
         self.dt = defaultdict(list)
         
         # variables for storing points in the current run
-        self._all_points = []  #[point_obj,...] unique pick objs from all pickers
+        self.all_points = []  #[point_obj,...] unique pick objs from all pickers
         self._point_types = []  #['ribosome',...]
-        self._points_per_obj = defaultdict(list) # {'ribosome': [0,2,3...],...}
-        self._all_points_locations = set() # {(x,y,z),...} a mask to check if a point is duplicated
+        self.points_per_obj = defaultdict(list) # {'ribosome': [0,2,3...],...}
+        self.all_points_locations = set() # {(x,y,z),...} a mask to check if a point is duplicated
         # variables for storing picked points in the current run
         self._picked_id_per_obj = defaultdict(list) # {'ribosome': [0,3...],...}
         self._picked_points_per_obj = defaultdict(list) # {'ribosome': [point_obj...],...}
@@ -36,12 +36,12 @@ class CopickDataset:
 
     
     def _reset_states(self):
-        self._points_per_obj = defaultdict(list)
+        self.points_per_obj = defaultdict(list)
         self._point_types = []
-        self._all_points = []
+        self.all_points = []
         self._picked_id_per_obj = defaultdict(list)
         self._picked_points_per_obj = defaultdict(list)
-        self._all_points_locations = set()
+        self.all_points_locations = set()
         self._logs = defaultdict(list)
         self.dt = defaultdict(list)
         
@@ -62,11 +62,11 @@ class CopickDataset:
                     self.dt['y'].append(float(point.location.y)/10)
                     self.dt['z'].append(float(point.location.z)/10)
                     self.dt['size'].append(0.1)
-                    if (point.location.x, point.location.y, point.location.z) not in self._all_points_locations:
-                        self._points_per_obj[pick.pickable_object_name].append(len(self._all_points))
+                    if (point.location.x, point.location.y, point.location.z) not in self.all_points_locations:
+                        self.points_per_obj[pick.pickable_object_name].append(len(self.all_points))
                         self._point_types.append(pick.pickable_object_name)
-                        self._all_points.append(point)
-                        self._all_points_locations.add((point.location.x, point.location.y, point.location.z))
+                        self.all_points.append(point)
+                        self.all_points_locations.add((point.location.x, point.location.y, point.location.z))
 
             tomogram = _run.get_voxel_spacing(10).get_tomogram("denoised")
             # Access the data
@@ -95,8 +95,8 @@ class CopickDataset:
         if point_id is not None and obj_name is not None:   
             self.pickable_obj_name = obj_name 
             print("Creating current pick point")
-            self.current_point = self._points_per_obj[obj_name][point_id]   # current point index
-            self.current_point_obj = self._all_points[self.current_point]
+            self.current_point = self.points_per_obj[obj_name][point_id]   # current point index
+            self.current_point_obj = self.all_points[self.current_point]
     
     
     def change_obj_name(self, obj_name=None, enable_log=True):
