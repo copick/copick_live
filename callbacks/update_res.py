@@ -5,17 +5,17 @@ import pandas as pd
 from collections import defaultdict
 from apscheduler.schedulers.background import BackgroundScheduler
 import zarr, os
-from functools import lru_cache 
 from zarr.storage import LRUStoreCache, DirectoryStore
 
 import time
-
 import numpy as np
 
 from utils.copick_dataset import copick_dataset
-from utils.plot_utils import (
-    plot_crop_image,
-    blank_fig
+from utils.figure_utils import (
+    prepare_images2d,
+    #plot_crop_image,
+    blank_fig,
+    draw_gallery
 )
 from utils.local_dataset import (
     dataset, 
@@ -74,69 +74,6 @@ def ranking_list(i, j):
 
 
 
-#====================================== memoization ======================================
-# cache = Cache(app.server, config={
-#     'CACHE_TYPE': 'filesystem',
-#     'CACHE_DIR': 'cache-directory'
-# })
-
-# TIMEOUT = 60
-
-
-# @cache.memoize(timeout=TIMEOUT)
-# def prepare_images(run, bin=0):
-#     zarr_file_path = TOMO_FILE_PATH + run + '/VoxelSpacing10.000/denoised.zarr'
-#     image = zarr.open(zarr_file_path, 'r')
-#     return json.dumps(image[bin][:])
-
-
-# def load_images(run: str):
-#     return json.loads(prepare_images(run))
-
-
-# def clear_cache():
-#     cache.clear()
-
-def grid_inds(copick_loc, hw):
-    x, y, z = copick_loc.x, copick_loc.y, copick_loc.z
-    x //= 10
-    y //= 10
-    z //= 10
-    x += hw
-    y += hw
-    z += hw
-    return x, y, z
-
-
-def crop_image2d(image, copick_loc, hw, avg):
-    x, y, z = grid_inds(copick_loc, hw)
-    z_minus = max(int(z)-avg, hw)
-    z_plus = min(int(z)+avg+1, image.shape[0]-hw)
-    out = np.mean(image[z_minus:z_plus, int(y)-hw:int(y)+hw+1, int(x)-hw:int(x)+hw+1], axis=0)  # (z, y, x) for copick coordinates
-    return np.swapaxes(out, 1, 0)  # change back to (z, x, y) for plotting, in accordance with ChimeraX after 90 deg clockwise rotation.
-
-
-@lru_cache(maxsize=128)  # number of images
-def prepare_images2d(run=None, particle=None, hw=60, avg=2):
-    padded_image = np.pad(copick_dataset.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')    
-    # cache_dir = CACHE_ROOT + 'cache-directory/'
-    # os.makedirs(cache_dir, exist_ok=True)
-    # # Create an LRU cache for the store with a maximum size of 100 MB
-    # store = DirectoryStore(f'{cache_dir}{run}_2d_crops.zarr')
-    # #cache_store = LRUStoreCache(store, max_size=100 * 2**20)
-    # root = zarr.group(store=store, overwrite=True)
-    cropped_image_batch = []
-    if particle in copick_dataset.points_per_obj:
-        point_ids = [i[0] for i in copick_dataset.points_per_obj[particle]]
-        point_objs = [copick_dataset.all_points[id] for id in point_ids]
-        for point_obj in point_objs:
-            cropped_image = crop_image2d(padded_image, point_obj.location, hw, avg)
-            cropped_image_batch.append(cropped_image)
-        
-    return np.array(cropped_image_batch)
-
-
-
 ############################################## Callbacks ##############################################
 @callback(
     Output("modal-help", "is_open"),
@@ -176,7 +113,7 @@ def toggle_analysis_tabs(at):
 
 
 @callback(
-    Output("fig2", "figure", allow_duplicate=True),
+    Output("output-image-upload", "children", allow_duplicate=True),
     Output("image-slider", "value"),
     Output("particle-dropdown", "value"),
     Output("modal-evaluation", "is_open"),
@@ -188,9 +125,9 @@ def toggle_analysis_tabs(at):
 def reset_analysis_popup(tomogram_index):
     msg = f"Choose results for {tomogram_index}"
     if tomogram_index is not None:
-        return blank_fig(), 0, None, True, "tab-1", msg
+        return [], 0, None, True, "tab-1", msg
     else:
-        return  blank_fig(), 0, None, False, "tab-1", msg
+        return  [], 0, None, False, "tab-1", msg
 
 
 @callback(
@@ -215,16 +152,18 @@ def load_tomogram_run(tomogram_index):
 @callback(
     Output("image-slider", "value", allow_duplicate=True),
     Input("particle-dropdown", "value"),
+    Input("display-row", "value"),
+    Input("display-col", "value"),
     prevent_initial_call=True
 )
-def reset_slider(value):
+def reset_slider(value, nrow, ncol):
     return 0
 
 
 @callback(
+    Output("output-image-upload", "children"),
     Output("particle-dropdown", "options"),
     Output("fig1", "figure"),
-    Output("fig2", "figure"),
     Output("image-slider", "max"),
     Output("image-slider", "marks"),
     Output("crop-label", "children"),
@@ -241,10 +180,14 @@ def reset_slider(value):
     Input("username-analysis", "value"),
     Input("keybind-event-listener", "event"),
     Input("keybind-event-listener", "n_events"),
+    Input("display-row", "value"),
+    Input("display-col", "value"),
     State("tomogram-index", "data"),
     State("fig1", "figure"),
-    State("fig2", "figure"),
+    State("output-image-upload", "children"),
     State("keybind-num", "data"),
+    State({'type': 'thumbnail-image', 'index': ALL}, 'n_clicks'),
+    State("assign-dropdown", "value"),
     prevent_initial_call=True
 )
 def update_analysis(
@@ -259,10 +202,14 @@ def update_analysis(
     copicklive_username,
     keybind_event_listener, 
     n_events,
+    nrow,
+    ncol,
     tomogram_index, 
     fig1, 
     fig2, 
-    kbn
+    kbn, 
+    thumbnail_image_select_value,
+    new_particle
 ):
     pressed_key = None
     if ctx.triggered_id == "keybind-event-listener":
@@ -275,7 +222,7 @@ def update_analysis(
         else:
             print(f'pressed_key {pressed_key}')
     
-    slider_max = 10
+    slider_max = 0
     changed_id = [p['prop_id'] for p in ctx.triggered][0]
     # takes 0.35s on mac3
     if tomogram_index:
@@ -286,56 +233,149 @@ def update_analysis(
             particle_dict = {k: k for k in sorted(set(copick_dataset.dt['pickable_object_name']))}
             df = pd.DataFrame.from_dict(copick_dataset.dt)
             fig1 = px.scatter_3d(df, x='x', y='y', z='z', color='pickable_object_name', symbol='user_id', size='size', opacity=0.5)
-            return particle_dict, fig1,  blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}, no_update, no_update, no_update
+            return fig2, particle_dict, fig1, slider_max, {0: '0', slider_max: str(slider_max)}, no_update, no_update, no_update
         elif at == "tab-2":
-            new_particle = None
+            #new_particle = None
             if pressed_key in [str(i+1) for i in range(len(dataset._im_dataset['name']))]:
                 new_particle = dataset._im_dataset['name'][int(pressed_key)-1]
             elif pressed_key == 's':
                 new_particle = kbn
 
             copick_dataset.new_user_id(user_id=copicklive_username)
-            if particle in copick_dataset.points_per_obj:
-                slider_max = len(copick_dataset.points_per_obj[particle]) - 1
+            if ("display-row" in changed_id or\
+                "display-col" in changed_id) or \
+                particle in copick_dataset.points_per_obj:
+                if len(copick_dataset.points_per_obj[particle])%(nrow*ncol):
+                    slider_max = len(copick_dataset.points_per_obj[particle])//(nrow*ncol)
+                else:
+                    slider_max = len(copick_dataset.points_per_obj[particle])//(nrow*ncol) - 1
+                        
+            positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))] 
             # loading zarr takes 6-8s for VPN
             particle_dict = {k: k for k in sorted(set(copick_dataset.dt['pickable_object_name']))}
             dim_z, dim_y, dim_x = copick_dataset.tomogram.shape
             msg = f"Image crop width (max {min(dim_x, dim_y)})"
-            fig2 = blank_fig()
             if crop_width is not None:
                 half_width = crop_width//2
                 if crop_avg is None:
                     crop_avg = 0
-                cropped_image_batch = prepare_images2d(run=tomogram_index, particle=particle, hw=half_width, avg=crop_avg)
-                if len(cropped_image_batch):
-                    fig2 = plot_crop_image(cropped_image_batch[slider_value], half_width)
+                fig2 = draw_gallery(run=tomogram_index, particle=particle, positions=positions, hw=half_width, avg=crop_avg, nrow=nrow, ncol=ncol)
 
-            #pressed_key  = ''
-            copick_dataset.load_curr_point(point_id=slider_value, obj_name=particle)
+
+            selected = [i for i,v in enumerate(thumbnail_image_select_value) if v%2 == 1]
+            selected_point_ids = [positions[i] for i in selected]
             if 'accept-bttn' in changed_id or pressed_key=='a':
-                copick_dataset.handle_accept()
+                copick_dataset.handle_accept_batch(selected_point_ids, particle)
             elif 'reject-bttn' in changed_id or pressed_key=='d':
-                copick_dataset.handle_reject()
+                copick_dataset.handle_reject_batch(selected_point_ids, particle)
             elif 'assign-bttn' in changed_id or pressed_key=='s':
-                copick_dataset.handle_assign(new_particle)
+                copick_dataset.handle_assign_batch(selected_point_ids, particle, new_particle)
 
-            if 'accept-bttn' in changed_id or \
-               'reject-bttn' in changed_id or \
-               'assign-bttn' in changed_id or \
-               pressed_key in ['a', 'd', 's']:
-                slider_value += 1
-                fig2 = plot_crop_image(cropped_image_batch[slider_value], half_width)
+            # update figures
+            # if 'accept-bttn' in changed_id or \
+            #    'reject-bttn' in changed_id or \
+            #    'assign-bttn' in changed_id or \
+            #    pressed_key in ['a', 'd', 's']:
+            #     slider_value += 1
+            #     positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))] 
+            #     fig2 = draw_gallery(run=tomogram_index, particle=particle, positions=positions, hw=half_width, avg=crop_avg, nrow=nrow, ncol=ncol)
             
-            if pressed_key=='ArrowRight':
+            if 'assign-bttn' in changed_id or pressed_key == 's':
+                positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))] 
+                fig2 = draw_gallery(run=tomogram_index, particle=particle, positions=positions, hw=half_width, avg=crop_avg, nrow=nrow, ncol=ncol)    
+            
+            if pressed_key=='ArrowRight' and slider_value < slider_max:
                 slider_value += 1
-                fig2 = plot_crop_image(cropped_image_batch[slider_value], half_width)
-            elif pressed_key=='ArrowLeft':
+                positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))] 
+                fig2 = draw_gallery(run=tomogram_index, particle=particle, positions=positions, hw=half_width, avg=crop_avg, nrow=nrow, ncol=ncol)
+            elif pressed_key=='ArrowLeft' and slider_value:
                 slider_value -= 1
-                fig2 = plot_crop_image(cropped_image_batch[slider_value], half_width)
+                positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))] 
+                fig2 = draw_gallery(run=tomogram_index, particle=particle, positions=positions, hw=half_width, avg=crop_avg, nrow=nrow, ncol=ncol)
 
-            return particle_dict, blank_fig(), fig2, slider_max, {0: '0', slider_max: str(slider_max)}, msg, slider_value, new_particle
+            return fig2, particle_dict, blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}, msg, slider_value, new_particle
     else:
-        return dict(), blank_fig(),  blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}, no_update, no_update, no_update
+        return fig2, dict(), blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}, no_update, no_update, no_update
+
+
+
+
+@callback(
+    Output({'type': 'thumbnail-card', 'index': MATCH}, 'color'),
+    Input({'type': 'thumbnail-image', 'index': MATCH}, 'n_clicks'),
+    Input('select-all-bttn', 'n_clicks'),
+    Input('unselect-all-bttn', 'n_clicks'),
+    State("image-slider", "value"),
+    State("display-row", "value"),
+    State("display-col", "value"),
+    State("particle-dropdown", "value"), 
+    State({'type': 'thumbnail-image', 'index': MATCH}, 'id'), 
+)
+def select_thumbnail(value, 
+                     select_clicks, 
+                     unselect_clicks, 
+                     slider_value, 
+                     nrow, ncol, 
+                     particle, 
+                     comp_id):
+    '''
+    This callback assigns a color to thumbnail cards in the following scenarios:
+        - An image has been selected, but no label has been assigned (blue)
+        - An image has been labeled (label color)
+        - An image has been unselected or unlabeled (no color)
+    Args:
+        value:                      Thumbnail card that triggered the callback (n_clicks)
+    Returns:
+        thumbnail_color:            Color of thumbnail card
+    '''
+    color = ''
+    colors = ['', 'success', 'danger', 'warning']
+    positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))]
+    #print(f'positions {positions}')
+    selected = [copick_dataset.picked_points_mask[copick_dataset.points_per_obj[particle][i][0]] for i in positions]
+    #print(f'selected {selected}')
+    #print(f'comp_id {comp_id}')
+    color = colors[selected[int(comp_id['index'])]]
+    #print(f'color {color} value {value}')
+    if value is None or (ctx.triggered[0]['prop_id'] == 'unselect-all-bttn.n_clicks' and color==''):
+        return ''
+    if value % 2 == 1:
+        return 'primary'
+    else:
+        return color
+
+
+@callback(
+    Output({'type': 'thumbnail-image', 'index': ALL}, 'n_clicks'),
+
+    # Input({'type': 'label-button', 'index': ALL}, 'n_clicks_timestamp'),
+    # Input('un-label', 'n_clicks'),
+    Input('select-all-bttn', 'n_clicks'),
+    Input('unselect-all-bttn', 'n_clicks'),
+
+    State({'type': 'thumbnail-image', 'index': ALL}, 'n_clicks'),
+    prevent_initial_call=True
+)
+def deselect(select_clicks, unselect_clicks, thumb_clicked):
+    '''
+    This callback deselects a thumbnail card
+    Args:
+        label_button_trigger:   Label button
+        unlabel_n_clicks:       Un-label button
+        unlabel_all:            Un-label all the images
+        thumb_clicked:          Selected thumbnail card indice, e.g., [0,1,1,0,0,0]
+    Returns:
+        Modify the number of clicks for a specific thumbnail card
+    '''
+    # if all(x is None for x in label_button_trigger) and unlabel_n_clicks is None and unlabel_all is None:
+    #     return [no_update]*len(thumb_clicked)
+    if ctx.triggered[0]['prop_id'] == 'unselect-all-bttn.n_clicks':
+        print([0 for thumb in thumb_clicked])
+        return [0 for thumb in thumb_clicked]
+    elif ctx.triggered[0]['prop_id'] == 'select-all-bttn.n_clicks':
+        return [1 for thumb in thumb_clicked]
+
+
 
 
 

@@ -73,11 +73,15 @@ tabs = html.Div(
                                                                                                 dbc.Input(id='username-analysis', placeholder="e.g., john.doe", type="text", style={'width': '75%'}),
                                                                                                 dbc.Label("Please select a particle type", className="mt-3"),
                                                                                                 dcc.Dropdown(id='particle-dropdown', style={'width': '87%'}),
+                                                                                                dbc.Label("Number of rows", className="mt-3"),
+                                                                                                dcc.Input(id="display-row",type="number", placeholder="5", value =5, min=1, step=1),
+                                                                                                dbc.Label("Number of columns", className="mt-3"),
+                                                                                                dcc.Input(id="display-col",type="number", placeholder="4", value =4, min=1, step=1),
                                                                                                 dbc.Label(id='crop-label', children="Image crop size (max 100)", className="mt-3"),
                                                                                                 dcc.Input(id="crop-width",type="number", placeholder="30", value =60, min=1, step=1),
                                                                                                 dbc.Label("Average ±N neigbor layers", className="mt-3"),
                                                                                                 dcc.Input(id="crop-avg", type="number", placeholder="3", value =2, min=0, step=1),
-                                                                                                dbc.Label("Particle slider (press key < or >)", className="mt-3"),
+                                                                                                dbc.Label("Page slider (press key < or >)", className="mt-3"),
                                                                                                 html.Div(dcc.Slider(
                                                                                                             id='image-slider',
                                                                                                             min=0,
@@ -93,17 +97,25 @@ tabs = html.Div(
                                                                                             align="center"
                                                                                         ),
                                                                                         dbc.Col([
-                                                                                                    dcc.Graph(id='fig2', 
-                                                                                                           figure=blank_fig(),
-                                                                                                           style={
-                                                                                                                "width": "100%",
-                                                                                                                "height": "100%",
-                                                                                                            })
+                                                                                                    html.Div(id='output-image-upload',children=[], style={"height":"70vh", 'overflowY': 'scroll'}),
+                                                                                                    # dcc.Graph(id='fig2', 
+                                                                                                    #        figure=blank_fig(),
+                                                                                                    #        style={
+                                                                                                    #             "width": "100%",
+                                                                                                    #             "height": "100%",
+                                                                                                    #         })
                                                                                                 ], 
                                                                                                 width=5,
                                                                                                 align="top",
                                                                                         ),
                                                                                         dbc.Col([
+                                                                                            dbc.Row([
+                                                                                                        dbc.Col(dbc.Row(dbc.Button('Select All', id='select-all-bttn', style={'width': '50%'}, color='primary', className="me-1"), justify='end')),
+                                                                                                        dbc.Col(dbc.Row(dbc.Button('Unselect All', id='unselect-all-bttn', style={'width': '50%'}, color='primary', className="me-1"), justify='start'))
+                                                                                                    ],
+                                                                                                    justify='evenly',
+                                                                                                    style={'margin-bottom': '40px'}
+                                                                                                    ),
                                                                                             dbc.Row([
                                                                                                         dbc.Col(dbc.Row(dbc.Button('(D) Reject', id='reject-bttn', style={'width': '50%'}, color='danger', className="me-1"), justify='end')),
                                                                                                         dbc.Col(dbc.Row(dbc.Button('(A) Accept', id='accept-bttn', style={'width': '50%'}, color='success', className="me-1"), justify='start'))
@@ -111,13 +123,17 @@ tabs = html.Div(
                                                                                                     justify='evenly',
                                                                                                     style={'margin-bottom': '40px'}
                                                                                                     ),
-                                                                                             dbc.Row([
-                                                                                                        dbc.Col(dbc.Row(dbc.Button('(S) Assign', id='assign-bttn', style={'width': '50%'}, color='primary', className="me-1"), justify='end')),
-                                                                                                        #dbc.Col(dbc.Row(dcc.Dropdown(id='assign-dropdown', options={k:k for k in dataset._im_dataset['name']}, style={'width': '75%', 'margin-left':'-3px'}), justify='start')),
-                                                                                                        dbc.Col(dbc.Row(dbc.ListGroup([dbc.ListGroupItem(f'({str(i+1)}) {k}') for i,k in enumerate(dataset._im_dataset['name'])]), justify='start'))
+                                                                                            dbc.Row([
+                                                                                                        dbc.Col(dbc.Row(dbc.Button('(S) Assign', id='assign-bttn', style={'width': '25%', 'margin-left':'90px'}, color='primary', className="me-1"), justify='start')),
+                                                                                                        #dbc.Col(dbc.Row(dbc.Button('Select All', id='select-all-bttn', style={'width': '50%'}, color='primary', className="me-1"), justify='start')),
+                                                                                                        #dbc.Col(dbc.Row(dbc.ListGroup([dbc.ListGroupItem(f'({str(i+1)}) {k}') for i,k in enumerate(dataset._im_dataset['name'])]), justify='start'))
                                                                                                     ],
-                                                                                                    justify='evenly'
+                                                                                                    justify='evenly',
+                                                                                                    style={'margin-bottom': '5px'}
                                                                                                     ),
+                                                                                            dbc.Row([dbc.Col(dbc.Row(dcc.Dropdown(id='assign-dropdown', options={k:k for k in dataset._im_dataset['name']}, style={'width': '75%', 'margin-left':'-10px'}), justify='end'))
+                                                                                                     ],
+                                                                                                     justify='evenly')
                                                                                         ], 
                                                                                         width=4, 
                                                                                         align="right",
