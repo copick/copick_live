@@ -131,7 +131,7 @@ def image_card(image_arr, index=0):
                             ],
                     outline=False,
                     color='white',
-                    style={"padding": "5px"})],
+                    style={"padding": "5%", "margin-bottom": "-10px", "margin-right": "-15px"})],
 
         id={'type': 'thumbnail-wrapper', 'index': index},
         style={'display': 'block'}
