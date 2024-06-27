@@ -9,3 +9,4 @@ numpy
 apscheduler
 #copick[all]
 git+https://github.com/uermel/copick.git
+pillow

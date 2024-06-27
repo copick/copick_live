@@ -29,6 +29,7 @@ class CopickDataset:
         self.points_per_obj = defaultdict(list) # {'ribosome': [(0,0.12),(2,0.33),(3,0.27...],...} (index, score)
         self.all_points_locations = set() # {(x,y,z),...} a mask to check if a point is duplicated
         # variables for storing picked points in the current run
+        self.picked_points_mask = [] #[1, 0, 2, 3, ...] # 1: accept, 2: reject, 0: unassigned, 3: assigned new class 
         self._picked_id_per_obj = defaultdict(list) # {'ribosome': [0,3...],...}
         self._picked_points_per_obj = defaultdict(list) # {'ribosome': [point_obj...],...}
 
@@ -39,6 +40,7 @@ class CopickDataset:
         self.points_per_obj = defaultdict(list)
         self._point_types = []
         self.all_points = []
+        self.picked_points_mask = []
         self._picked_id_per_obj = defaultdict(list)
         self._picked_points_per_obj = defaultdict(list)
         self.all_points_locations = set()
@@ -67,7 +69,8 @@ class CopickDataset:
                         self._point_types.append(pick.pickable_object_name)
                         self.all_points.append(point)
                         self.all_points_locations.add((point.location.x, point.location.y, point.location.z))
-      
+            
+            self.picked_points_mask = [0]*len(self.all_points)
             if sort_by_score:
                 for k,values in self.points_per_obj.items():
                     if len(values):
@@ -100,8 +103,12 @@ class CopickDataset:
         if point_id is not None and obj_name is not None:   
             self.pickable_obj_name = obj_name 
             print("Creating current pick point")
-            self.current_point = self.points_per_obj[obj_name][point_id][0]   # current point index
-            self.current_point_obj = self.all_points[self.current_point]
+            if len(self.points_per_obj[obj_name]): 
+                self.current_point = self.points_per_obj[obj_name][point_id][0]   # current point index
+                self.current_point_obj = self.all_points[self.current_point]
+            else:
+                self.current_point = None
+                self.current_point_obj = None
     
     
     def change_obj_name(self, obj_name=None, enable_log=True):
@@ -137,12 +144,12 @@ class CopickDataset:
             df = pd.DataFrame.from_dict(self._logs)
             df.to_csv('logs.csv', sep='\t', index=False)
     
-
+    
     def handle_accept(self):
         if self.current_point is not None:
+            self.picked_points_mask[self.current_point] = 1
             obj_name = self._point_types[self.current_point]
             print(f"Accept, Object Type: {obj_name}, Run Name: {self.run_name}, Location: {self.current_point_obj.location}")
-            print(obj_name, self._picked_id_per_obj)
             self._point_types[self.current_point] = obj_name
             if self.current_point not in self._picked_id_per_obj[obj_name]:
                 self._picked_id_per_obj[obj_name].append(self.current_point)
@@ -155,6 +162,7 @@ class CopickDataset:
             self.log_operation(operation='reject', old_obj_name='NC', new_obj_name='NC')
 
         if self.current_point is not None:
+            self.picked_points_mask[self.current_point] = 2
             try:
                 obj_name =self._point_types[self.current_point]
                 index = self._picked_id_per_obj[obj_name].index(self.current_point)
@@ -170,6 +178,46 @@ class CopickDataset:
         self.handle_reject(enable_log=False)
         self.change_obj_name(new_bj_name)
         self.handle_accept()
+        #self.picked_points_mask[self.current_point] = 3
+
+        # EXPERIMENT, dangeraous, may incurr index errors!
+        # Only re-assignment changes the original states (initialized when load run) 
+        new_list = []
+        target = tuple()
+        old_obj_name = self.pickable_obj_name
+        print(old_obj_name, self.points_per_obj[old_obj_name])
+        for item in self.points_per_obj[old_obj_name]:
+            if item[0] != self.current_point:
+                new_list.append(item)
+            else:
+                target = item
+
+        self.points_per_obj[old_obj_name] = new_list
+        # add the new assigned point to the front
+        self.points_per_obj[new_bj_name].insert(0, target)
+
+        
+    
+    def handle_accept_batch(self, point_ids=None, obj_name=None):
+        if point_ids is not None:
+            for point_id in point_ids:
+                self.load_curr_point(point_id=point_id, obj_name=obj_name)
+                self.handle_accept()
+
+
+    def handle_reject_batch(self, point_ids=None, obj_name=None):
+        if point_ids is not None:
+            for point_id in point_ids:
+                self.load_curr_point(point_id=point_id, obj_name=obj_name)
+                self.handle_reject()
+    
+    
+    def handle_assign_batch(self, point_ids=None, obj_name=None, new_bj_name=None):
+        if point_ids is not None and obj_name is not None and new_bj_name is not None:
+            for point_id in point_ids:
+                self.load_curr_point(point_id=point_id, obj_name=obj_name)
+                self.handle_assign(new_bj_name)
+
 
 
 
