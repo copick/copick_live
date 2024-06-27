@@ -7,10 +7,10 @@ CopickLive main page
 Geting Started window
 ![CZII copick live update](assets/gui-2.png)
 
-Visualize pick results for each tomogram (click on the corresponding magnifier in the 3rd column)
+Visualize pick results for each tomogram (click on the corresponding magnifier in the 3rd column)  
 [To be inserted]
 
-Inspect and modify picked points in a gallery view 
+Inspect and modify picked points in a gallery view   
 [To be inserted]
 
 
