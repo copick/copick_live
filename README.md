@@ -10,7 +10,7 @@ Geting Started window
 Visualize pick results for each tomogram (click on the corresponding magnifier in the 3rd column)
 [To be inserted]
 
-Inspect and modify each pick point 
+Inspect and modify picked points in a gallery view 
 [To be inserted]
 
 
