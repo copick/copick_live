@@ -4,7 +4,7 @@ CopickLive is a Dash Plotly web server visualizing CZII ML challenge pickathon r
 CopickLive main page
 ![CZII copick live update](assets/gui-1.png)
 
-Geting Started window
+Getting Started window
 ![CZII copick live update](assets/gui-2.png)
 
 Visualize pick results for each tomogram (click on the corresponding magnifier in the 3rd column)  
