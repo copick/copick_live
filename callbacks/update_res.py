@@ -4,16 +4,10 @@ import json, time
 import pandas as pd
 from collections import defaultdict
 from apscheduler.schedulers.background import BackgroundScheduler
-import zarr, os
-from zarr.storage import LRUStoreCache, DirectoryStore
 
 import time
-import numpy as np
-
 from utils.copick_dataset import copick_dataset
 from utils.figure_utils import (
-    prepare_images2d,
-    #plot_crop_image,
     blank_fig,
     draw_gallery
 )
@@ -37,6 +31,55 @@ from dash import (
     no_update
 )
 from dash.exceptions import PreventUpdate
+
+
+from dash_iconify import DashIconify
+import base64
+
+
+
+def submission_list(i,j):
+    return  dbc.ListGroupItem("{}:      {}".format(i.split('.json')[0], j))
+
+
+import io
+def parse_contents(contents, filename, date):
+    content_type, content_string = contents.split(',')
+    decoded = base64.b64decode(content_string)
+    fig = []
+    try:
+        if 'csv' in filename:
+            # Assume that the user uploaded a CSV file
+            df = pd.read_csv(
+                io.StringIO(decoded.decode('utf-8')))
+            df = df.sort_values(by=['Aggregate_Fbeta'], ascending=False)
+            df = df.reset_index(drop=True)
+            df['rank'] = df.index
+            #df = df[['File', 'Aggregate_Fbeta']]
+            dict_df = df.set_index('File')['Aggregate_Fbeta'].to_dict()
+            print(dict_df)
+            fig = px.scatter(df, x='rank', y='Aggregate_Fbeta', hover_name='File', title='Submitted model ranking')
+        elif 'xls' in filename:
+            # Assume that the user uploaded an excel file
+            df = pd.read_excel(io.BytesIO(decoded))
+            df = df.sort_values(by=['Aggregate_Fbeta'], ascending=False)
+            df = df[['File', 'Aggregate_Fbeta']]
+    except Exception as e:
+        print(e)
+        return html.Div([
+            'There was an error processing this file.'
+        ])
+    
+    return dbc.Card([
+                dbc.CardHeader([DashIconify(icon="noto-v1:trophy", width=25, style={"margin": "5px"}), 
+                                'Submitted model ranking'
+                                ], 
+                                style={"font-weight": "bold"}
+                                ),
+                dbc.CardBody(id='submission-rank', children=dcc.Graph(figure=fig), style={'overflowY': 'scroll'})
+            ],
+            style={"height": '87vh'}
+            )
 
 
 
@@ -84,6 +127,28 @@ def ranking_list(i, j):
 def toggle_help_modal(n_clicks, is_open):
     return not is_open
 
+
+@callback(
+    Output("modal-results", "is_open"),
+    Input("button-results", "n_clicks"),
+    State("modal-results", "is_open"),
+    prevent_initial_call=True
+)
+def toggle_help_modal(n_clicks, is_open):
+    return not is_open
+
+
+@callback(Output('output-data-upload', 'children'),
+          Input('upload-data', 'contents'),
+          State('upload-data', 'filename'),
+          State('upload-data', 'last_modified')
+          )
+def update_output(list_of_contents, list_of_names, list_of_dates):
+    if list_of_contents is not None:
+        children = [
+            parse_contents(c, n, d) for c, n, d in
+            zip(list_of_contents, list_of_names, list_of_dates)]
+        return children
 
 
 @callback(

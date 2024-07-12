@@ -51,6 +51,32 @@ instructions = [dcc.Markdown('''
     ]
 
 
+
+competition_results = [
+    dcc.Upload(
+        id='upload-data',
+        children=html.Div([
+            'Drag and Drop or ',
+            html.A('Select Files')
+        ]),
+        style={
+            'width': '95%',
+            'height': '60px',
+            'lineHeight': '60px',
+            'borderWidth': '1px',
+            'borderStyle': 'dashed',
+            'borderRadius': '5px',
+            'textAlign': 'center',
+            'margin': '10px'
+        },
+        # Allow multiple files to be uploaded
+        multiple=True
+    ),
+    html.Div(id='output-data-upload'),
+]
+
+
+
 tabs = html.Div(
     [
         dbc.Tabs(
@@ -170,6 +196,14 @@ def layout():
                     dbc.ModalBody(id='modal-body-help', children=instructions),
                 ], 
                 id="modal-help",
+                is_open=False,
+                size="xl"
+            ),
+        dbc.Modal([
+                    dbc.ModalHeader(dbc.ModalTitle("Submission Results")),
+                    dbc.ModalBody(id='modal-body-results', children=competition_results),
+                ], 
+                id="modal-results",
                 is_open=False,
                 size="xl"
             ),
