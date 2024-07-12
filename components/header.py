@@ -3,7 +3,7 @@ from dash import html
 import dash_bootstrap_components as dbc
 
 
-button_help = dbc.Button(
+button_start = dbc.Button(
     "Getting Started",
     #outline=True,
     color="primary",
@@ -12,6 +12,14 @@ button_help = dbc.Button(
     style={"text-transform": "none", "fontSize": "0.85em"},
 )
 
+button_results = dbc.Button(
+    "Submission Results",
+    #outline=True,
+    color="primary",
+    id="button-results",
+    className="me-1",
+    style={"text-transform": "none", "fontSize": "0.85em"},
+)
 
 def layout():
     header= dbc.Navbar(
@@ -51,7 +59,8 @@ def layout():
                                 dbc.Collapse(
                                     dbc.Nav(
                                         [
-                                            dbc.NavItem(button_help),
+                                            dbc.NavItem(button_start),
+                                            dbc.NavItem(button_results),
                                         ],
                                         navbar=True,
                                     ),
