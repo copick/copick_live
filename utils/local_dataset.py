@@ -6,14 +6,7 @@ from collections import defaultdict, deque
 import json, zarr
 
 
-config = configparser.ConfigParser()
-config.read(os.path.join(os.getcwd(), "config.ini"))
-COPICK_TEMPLATE_PATH = '%s' % config['copick_template']['COPICK_TEMPLATE_PATH']
-COUNTER_FILE_PATH = '%s' % config['counter_checkpoint']['COUNTER_FILE_PATH'] 
-PICK_FILE_PATH = '%s' % config['local_picks']['PICK_FILE_PATH'] + 'ExperimentRuns/'
-CACHE_ROOT = '%s' % config['local_cache']['CACHE_ROOT']
-
-dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1,2) for j in range(1,10)]
+dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1,100) for j in range(1,10)]
 dir2id = {j:i for i,j in enumerate(dirs)}
 dir_set = set(dirs)
 
@@ -187,4 +180,32 @@ class LocalDataset:
 
 
 
-dataset = LocalDataset(PICK_FILE_PATH, COPICK_TEMPLATE_PATH)
+COUNTER_FILE_PATH = None
+local_dataset = None
+def get_local_dataset(LOCAL_FILE_PATH=None, COPICK_TEMPLATE_PATH=None, COUNTER_CHECKPOINT_PATH=None):
+    global local_dataset
+    global COUNTER_FILE_PATH
+    if not local_dataset:
+        if not LOCAL_FILE_PATH or not COPICK_TEMPLATE_PATH:
+            config = configparser.ConfigParser()
+            config.read(os.path.join(os.getcwd(), "config.ini"))
+        
+        if not LOCAL_FILE_PATH:
+            LOCAL_FILE_PATH = '%s' % config['local_picks']['PICK_FILE_PATH'] + 'ExperimentRuns/'
+        if not COPICK_TEMPLATE_PATH:
+            COPICK_TEMPLATE_PATH = '%s' % config['copick_template']['COPICK_TEMPLATE_PATH']
+        
+        local_dataset = LocalDataset(local_file_path=LOCAL_FILE_PATH, config_path=COPICK_TEMPLATE_PATH)
+    
+    if not COUNTER_FILE_PATH:
+        if not COUNTER_CHECKPOINT_PATH:
+            config = configparser.ConfigParser()
+            config.read(os.path.join(os.getcwd(), "config.ini"))
+
+        if not COUNTER_CHECKPOINT_PATH:
+            COUNTER_FILE_PATH = '%s' % config['counter_checkpoint']['COUNTER_FILE_PATH']
+        else:
+             COUNTER_FILE_PATH = COUNTER_CHECKPOINT_PATH
+           
+
+get_local_dataset()
