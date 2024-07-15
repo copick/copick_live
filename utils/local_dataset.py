@@ -6,7 +6,7 @@ from collections import defaultdict, deque
 import json, zarr
 
 
-dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1,2) for j in range(1,10)]
+dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1,100) for j in range(1,10)]
 dir2id = {j:i for i,j in enumerate(dirs)}
 dir_set = set(dirs)
 
