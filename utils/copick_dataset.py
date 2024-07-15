@@ -6,13 +6,6 @@ import pandas as pd
 import zarr
 
 
-config = configparser.ConfigParser()
-config.read(os.path.join(os.getcwd(), "config.ini"))
-COPICKLIVE_CONFIG_PATH = '%s' % config['copicklive_config']['COPICKLIVE_CONFIG_PATH']
-COPICK_TEMPLATE_PATH = '%s' % config['copick_template']['COPICK_TEMPLATE_PATH']
-
-
-
 class CopickDataset:
     def __init__(self, copick_config_path: str=None, copick_config_path_tomogram: str=None):
         self.root = CopickRootFSSpec.from_file(copick_config_path) if copick_config_path else None
@@ -220,6 +213,17 @@ class CopickDataset:
 
 
 
+copick_dataset = None
+def get_copick_dataset(COPICKLIVE_CONFIG_PATH=None, COPICK_TEMPLATE_PATH=None):
+    global copick_dataset
+    if not copick_dataset:
+        if not COPICKLIVE_CONFIG_PATH or not COPICK_TEMPLATE_PATH:
+            config = configparser.ConfigParser()
+            config.read(os.path.join(os.getcwd(), "config.ini"))
+        if not COPICKLIVE_CONFIG_PATH:
+            COPICKLIVE_CONFIG_PATH = '%s' % config['copicklive_config']['COPICKLIVE_CONFIG_PATH']
+        if not COPICK_TEMPLATE_PATH:
+            COPICK_TEMPLATE_PATH = '%s' % config['copick_template']['COPICK_TEMPLATE_PATH']
+        copick_dataset = CopickDataset(copick_config_path=COPICKLIVE_CONFIG_PATH, copick_config_path_tomogram=COPICK_TEMPLATE_PATH)
 
-copick_dataset = CopickDataset(copick_config_path=COPICKLIVE_CONFIG_PATH, copick_config_path_tomogram=COPICK_TEMPLATE_PATH)
-
+get_copick_dataset()
