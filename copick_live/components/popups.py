@@ -1,7 +1,7 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
-from copick_live.utils.local_dataset import local_dataset
+from copick_live.utils.local_dataset import get_local_dataset
 from dash_extensions import EventListener
 
 def blank_fig():
@@ -152,12 +152,12 @@ tabs = html.Div(
                                                                                             dbc.Row([
                                                                                                         dbc.Col(dbc.Row(dbc.Button('(S) Assign', id='assign-bttn', style={'width': '25%', 'margin-left':'90px'}, color='primary', className="me-1"), justify='start')),
                                                                                                         #dbc.Col(dbc.Row(dbc.Button('Select All', id='select-all-bttn', style={'width': '50%'}, color='primary', className="me-1"), justify='start')),
-                                                                                                        #dbc.Col(dbc.Row(dbc.ListGroup([dbc.ListGroupItem(f'({str(i+1)}) {k}') for i,k in enumerate(local_dataset._im_dataset['name'])]), justify='start'))
+                                                                                                        #dbc.Col(dbc.Row(dbc.ListGroup([dbc.ListGroupItem(f'({str(i+1)}) {k}') for i,k in enumerate(get_local_dataset()._im_dataset['name'])]), justify='start'))
                                                                                                     ],
                                                                                                     justify='evenly',
                                                                                                     style={'margin-bottom': '5px'}
                                                                                                     ),
-                                                                                            dbc.Row([dbc.Col(dbc.Row(dcc.Dropdown(id='assign-dropdown', options={k:k for k in local_dataset._im_dataset['name']}, style={'width': '75%', 'margin-left':'-10px'}), justify='end'))
+                                                                                            dbc.Row([dbc.Col(dbc.Row(dcc.Dropdown(id='assign-dropdown', options={k:k for k in get_local_dataset()._im_dataset['name']}, style={'width': '75%', 'margin-left':'-10px'}), justify='end'))
                                                                                                      ],
                                                                                                      justify='evenly')
                                                                                         ], 

@@ -6,13 +6,13 @@ from collections import defaultdict
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import time
-from copick_live.utils.copick_dataset import copick_dataset
+from copick_live.utils.get_copick_dataset() import get_copick_dataset
 from copick_live.utils.figure_utils import (
     blank_fig,
     draw_gallery
 )
 from copick_live.utils.local_dataset import (
-    local_dataset, 
+    get_local_dataset, 
     dirs, 
     dir2id, 
     COUNTER_FILE_PATH, 
@@ -84,11 +84,11 @@ def parse_contents(contents, filename, date):
 
 
 # 1st update of the internal states
-local_dataset.refresh()
+get_local_dataset().refresh()
 
 #Scheduler
 scheduler = BackgroundScheduler() # in-memory job stores
-scheduler.add_job(func=local_dataset.refresh, trigger='interval', seconds=20)  # interval should be larger than the time it takes to refresh, o.w. it will be report incomplete stats.
+scheduler.add_job(func=get_local_dataset().refresh, trigger='interval', seconds=20)  # interval should be larger than the time it takes to refresh, o.w. it will be report incomplete stats.
 scheduler.start()
 
 
@@ -205,7 +205,7 @@ def load_tomogram_run(tomogram_index):
     if tomogram_index is not None:
         # takes 18s for VPN
         t1 = time.time()
-        copick_dataset.load_curr_run(run_name=tomogram_index, sort_by_score=True)
+        get_copick_dataset().load_curr_run(run_name=tomogram_index, sort_by_score=True)
         # takes 0.2s
         t2 = time.time()
         print('find copick run in copick', t2-t1)
@@ -292,33 +292,33 @@ def update_analysis(
     # takes 0.35s on mac3
     if tomogram_index:
         #time.sleep(7)
-        #particle_dict = {k: k for k in sorted(set(copick_dataset.dt['pickable_object_name']))}
+        #particle_dict = {k: k for k in sorted(set(get_copick_dataset().dt['pickable_object_name']))}
         if at == "tab-1":
             time.sleep(2)
-            particle_dict = {k: k for k in sorted(set(copick_dataset.dt['pickable_object_name']))}
-            df = pd.DataFrame.from_dict(copick_dataset.dt)
+            particle_dict = {k: k for k in sorted(set(get_copick_dataset().dt['pickable_object_name']))}
+            df = pd.DataFrame.from_dict(get_copick_dataset().dt)
             fig1 = px.scatter_3d(df, x='x', y='y', z='z', color='pickable_object_name', symbol='user_id', size='size', opacity=0.5)
             return fig2, particle_dict, fig1, slider_max, {0: '0', slider_max: str(slider_max)}, no_update, no_update, no_update
         elif at == "tab-2":
             #new_particle = None
-            if pressed_key in [str(i+1) for i in range(len(local_dataset._im_dataset['name']))]:
-                new_particle = local_dataset._im_dataset['name'][int(pressed_key)-1]
+            if pressed_key in [str(i+1) for i in range(len(get_local_dataset()._im_dataset['name']))]:
+                new_particle = get_local_dataset()._im_dataset['name'][int(pressed_key)-1]
             elif pressed_key == 's':
                 new_particle = kbn
 
-            copick_dataset.new_user_id(user_id=copicklive_username)
+            get_copick_dataset().new_user_id(user_id=copicklive_username)
             if ("display-row" in changed_id or\
                 "display-col" in changed_id) or \
-                particle in copick_dataset.points_per_obj:
-                if len(copick_dataset.points_per_obj[particle])%(nrow*ncol):
-                    slider_max = len(copick_dataset.points_per_obj[particle])//(nrow*ncol)
+                particle in get_copick_dataset().points_per_obj:
+                if len(get_copick_dataset().points_per_obj[particle])%(nrow*ncol):
+                    slider_max = len(get_copick_dataset().points_per_obj[particle])//(nrow*ncol)
                 else:
-                    slider_max = len(copick_dataset.points_per_obj[particle])//(nrow*ncol) - 1
+                    slider_max = len(get_copick_dataset().points_per_obj[particle])//(nrow*ncol) - 1
                         
-            positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))] 
+            positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(get_copick_dataset().points_per_obj[particle])))] 
             # loading zarr takes 6-8s for VPN
-            particle_dict = {k: k for k in sorted(set(copick_dataset.dt['pickable_object_name']))}
-            dim_z, dim_y, dim_x = copick_dataset.tomogram.shape
+            particle_dict = {k: k for k in sorted(set(get_copick_dataset().dt['pickable_object_name']))}
+            dim_z, dim_y, dim_x = get_copick_dataset().tomogram.shape
             msg = f"Image crop width (max {min(dim_x, dim_y)})"
             if crop_width is not None:
                 half_width = crop_width//2
@@ -330,11 +330,11 @@ def update_analysis(
             selected = [i for i,v in enumerate(thumbnail_image_select_value) if v%2 == 1]
             selected_point_ids = [positions[i] for i in selected]
             if 'accept-bttn' in changed_id or pressed_key=='a':
-                copick_dataset.handle_accept_batch(selected_point_ids, particle)
+                get_copick_dataset().handle_accept_batch(selected_point_ids, particle)
             elif 'reject-bttn' in changed_id or pressed_key=='d':
-                copick_dataset.handle_reject_batch(selected_point_ids, particle)
+                get_copick_dataset().handle_reject_batch(selected_point_ids, particle)
             elif 'assign-bttn' in changed_id or pressed_key=='s':
-                copick_dataset.handle_assign_batch(selected_point_ids, particle, new_particle)
+                get_copick_dataset().handle_assign_batch(selected_point_ids, particle, new_particle)
 
             # update figures
             # if 'accept-bttn' in changed_id or \
@@ -342,20 +342,20 @@ def update_analysis(
             #    'assign-bttn' in changed_id or \
             #    pressed_key in ['a', 'd', 's']:
             #     slider_value += 1
-            #     positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))] 
+            #     positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(get_copick_dataset().points_per_obj[particle])))] 
             #     fig2 = draw_gallery(run=tomogram_index, particle=particle, positions=positions, hw=half_width, avg=crop_avg, nrow=nrow, ncol=ncol)
             
             if 'assign-bttn' in changed_id or pressed_key == 's':
-                positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))] 
+                positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(get_copick_dataset().points_per_obj[particle])))] 
                 fig2 = draw_gallery(run=tomogram_index, particle=particle, positions=positions, hw=half_width, avg=crop_avg, nrow=nrow, ncol=ncol)    
             
             if pressed_key=='ArrowRight' and slider_value < slider_max:
                 slider_value += 1
-                positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))] 
+                positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(get_copick_dataset().points_per_obj[particle])))] 
                 fig2 = draw_gallery(run=tomogram_index, particle=particle, positions=positions, hw=half_width, avg=crop_avg, nrow=nrow, ncol=ncol)
             elif pressed_key=='ArrowLeft' and slider_value:
                 slider_value -= 1
-                positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))] 
+                positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(get_copick_dataset().points_per_obj[particle])))] 
                 fig2 = draw_gallery(run=tomogram_index, particle=particle, positions=positions, hw=half_width, avg=crop_avg, nrow=nrow, ncol=ncol)
 
             return fig2, particle_dict, blank_fig(), slider_max, {0: '0', slider_max: str(slider_max)}, msg, slider_value, new_particle
@@ -395,9 +395,9 @@ def select_thumbnail(value,
     '''
     color = ''
     colors = ['', 'success', 'danger', 'warning']
-    positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(copick_dataset.points_per_obj[particle])))]
+    positions = [i for i in range(slider_value*nrow*ncol, min((slider_value+1)*nrow*ncol, len(get_copick_dataset().points_per_obj[particle])))]
     #print(f'positions {positions}')
-    selected = [copick_dataset.picked_points_mask[copick_dataset.points_per_obj[particle][i][0]] for i in positions]
+    selected = [get_copick_dataset().picked_points_mask[get_copick_dataset().points_per_obj[particle][i][0]] for i in positions]
     #print(f'selected {selected}')
     #print(f'comp_id {comp_id}')
     color = colors[selected[int(comp_id['index'])]]
@@ -453,8 +453,8 @@ def deselect(select_clicks, unselect_clicks, thumb_clicked):
 def download_json(n_clicks, input_value):
     input_value = '.'.join(input_value.split(' '))
     filename = 'copick_config_' + '_'.join(input_value.split('.')) + '.json'   
-    local_dataset.config_file["user_id"] = input_value
-    return dict(content=json.dumps(local_dataset.config_file, indent=4), filename=filename)
+    get_local_dataset().config_file["user_id"] = input_value
+    return dict(content=json.dumps(get_local_dataset().config_file, indent=4), filename=filename)
 
 
 @callback(
@@ -494,7 +494,7 @@ def download_txt(n_clicks):
     Input('interval-component', 'n_intervals')
 )
 def update_results(n):
-    data = local_dataset.fig_data()
+    data = get_local_dataset().fig_data()
     fig = px.bar(x=data['name'], 
                  y=data['count'], 
                  labels={'x': 'Objects', 'y':'Counts'}, 
@@ -504,10 +504,10 @@ def update_results(n):
                  )
     fig.update(layout_showlegend=False)
     num_candidates = len(dirs) if len(dirs) < 100 else 100
-    candidates = local_dataset.candidates(num_candidates, random_sampling=False)
-    num_per_person_ordered = local_dataset.num_per_person_ordered 
-    label = f'Labeled {len(local_dataset.tomos_pickers)} out of 1000 tomograms'
-    bar_val = round(len(local_dataset.tomos_pickers)/1000*100, 1)
+    candidates = get_local_dataset().candidates(num_candidates, random_sampling=False)
+    num_per_person_ordered = get_local_dataset().num_per_person_ordered 
+    label = f'Labeled {len(get_local_dataset().tomos_pickers)} out of 1000 tomograms'
+    bar_val = round(len(get_local_dataset().tomos_pickers)/1000*100, 1)
     
     return fig, \
            dbc.ListGroup([candidate_list(i, j) for i, j in candidates.items()], flush=True), \
@@ -525,10 +525,10 @@ def update_results(n):
 def update_compositions(n):
     progress_list = []
     composition_list = html.Div()
-    data = local_dataset.fig_data()
+    data = get_local_dataset().fig_data()
     l = 1/len(data['colors'])*100
     obj_order = {name:i for i,name in enumerate(data['name'])}
-    tomograms = {k:v for k,v in sorted(local_dataset.tomograms.items(), key=lambda x: dir2id[x[0]])} 
+    tomograms = {k:v for k,v in sorted(get_local_dataset().tomograms.items(), key=lambda x: dir2id[x[0]])} 
     for tomogram,ps in tomograms.items():
         progress = []
         ps = [p for p in ps if p in obj_order]

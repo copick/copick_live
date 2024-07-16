@@ -8,7 +8,7 @@ import io
 import base64
 import numpy as np
 
-from utils.copick_dataset import copick_dataset
+from utils.copick_dataset import get_copick_dataset
 from functools import lru_cache 
 
 
@@ -35,7 +35,7 @@ def crop_image2d(image, copick_loc, hw, avg):
 #====================================== memoization ======================================
 #@lru_cache(maxsize=128)  # number of images
 def prepare_images2d(run=None, particle=None, positions=[], hw=60, avg=2):
-    padded_image = np.pad(copick_dataset.tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')    
+    padded_image = np.pad(get_copick_dataset().tomogram, ((hw,hw), (hw,hw), (hw, hw)), 'constant')    
     # cache_dir = CACHE_ROOT + 'cache-directory/'
     # os.makedirs(cache_dir, exist_ok=True)
     # # Create an LRU cache for the store with a maximum size of 100 MB
@@ -43,9 +43,9 @@ def prepare_images2d(run=None, particle=None, positions=[], hw=60, avg=2):
     # #cache_store = LRUStoreCache(store, max_size=100 * 2**20)
     # root = zarr.group(store=store, overwrite=True)
     cropped_image_batch = []
-    if particle in copick_dataset.points_per_obj and len(positions):
-        point_ids = [copick_dataset.points_per_obj[particle][i][0] for i in positions]
-        point_objs = [copick_dataset.all_points[id] for id in point_ids]
+    if particle in get_copick_dataset().points_per_obj and len(positions):
+        point_ids = [get_copick_dataset().points_per_obj[particle][i][0] for i in positions]
+        point_objs = [get_copick_dataset().all_points[id] for id in point_ids]
         for point_obj in point_objs:
             cropped_image = crop_image2d(padded_image, point_obj.location, hw, avg)
             cropped_image_batch.append(cropped_image)

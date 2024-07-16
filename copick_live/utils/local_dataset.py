@@ -178,34 +178,40 @@ class LocalDataset:
         image_dataset['colors'] = {k:'rgba'+str(tuple(v)) for k,v in image_dataset['colors'].items()}
         return image_dataset
 
-
-
-COUNTER_FILE_PATH = None
 local_dataset = None
-def get_local_dataset(LOCAL_FILE_PATH=None, COPICK_TEMPLATE_PATH=None, COUNTER_CHECKPOINT_PATH=None):
+COUNTER_FILE_PATH = None
+
+def get_local_dataset(config_path=None):
     global local_dataset
     global COUNTER_FILE_PATH
-    if not local_dataset:
-        if not LOCAL_FILE_PATH or not COPICK_TEMPLATE_PATH:
-            config = configparser.ConfigParser()
-            config.read(os.path.join(os.getcwd(), "config.ini"))
-        
-        if not LOCAL_FILE_PATH:
-            LOCAL_FILE_PATH = '%s' % config['local_picks']['PICK_FILE_PATH'] + 'ExperimentRuns/'
-        if not COPICK_TEMPLATE_PATH:
-            COPICK_TEMPLATE_PATH = '%s' % config['copick_template']['COPICK_TEMPLATE_PATH']
-        
-        local_dataset = LocalDataset(local_file_path=LOCAL_FILE_PATH, config_path=COPICK_TEMPLATE_PATH)
-    
-    if not COUNTER_FILE_PATH:
-        if not COUNTER_CHECKPOINT_PATH:
-            config = configparser.ConfigParser()
-            config.read(os.path.join(os.getcwd(), "config.ini"))
 
-        if not COUNTER_CHECKPOINT_PATH:
-            COUNTER_FILE_PATH = '%s' % config['counter_checkpoint']['COUNTER_FILE_PATH']
+    if config_path or not local_dataset:
+        config = configparser.ConfigParser()
+
+        if config_path:
+            config_path = os.path.abspath(config_path)
         else:
-             COUNTER_FILE_PATH = COUNTER_CHECKPOINT_PATH
-           
+            config_path = os.path.join(os.getcwd(), "config.ini")
 
-get_local_dataset()
+        if os.path.exists(config_path):
+            config.read(config_path)
+        else:
+            raise FileNotFoundError(f"Config file not found at {config_path}")
+
+        LOCAL_FILE_PATH = config.get("local_picks", "PICK_FILE_PATH", fallback=None)
+        if LOCAL_FILE_PATH:
+            LOCAL_FILE_PATH = os.path.join(LOCAL_FILE_PATH, "ExperimentRuns/")
+        COPICK_TEMPLATE_PATH = config.get("copick_template", "COPICK_TEMPLATE_PATH", fallback=None)
+
+        if not LOCAL_FILE_PATH or not COPICK_TEMPLATE_PATH:
+            raise ValueError("Config paths for LocalDataset are not provided and not found in the config file.")
+
+        local_dataset = LocalDataset(local_file_path=LOCAL_FILE_PATH, config_path=COPICK_TEMPLATE_PATH)
+
+    if not COUNTER_FILE_PATH:
+        COUNTER_FILE_PATH = config.get("counter_checkpoint", "COUNTER_FILE_PATH", fallback=None)
+        if not COUNTER_FILE_PATH:
+            raise ValueError("Config path for COUNTER_FILE_PATH is not provided and not found in the config file.")
+
+    return local_dataset
+
