@@ -288,7 +288,7 @@ def get_copick_dataset(config_path=None):
             )
 
         copick_dataset = CopickDataset(
-            copick_config_path=COPICKLIVE_CONFIG_PATH,
+            copick_config_path=COPICK_TEMPLATE_PATH,
             copick_config_path_tomogram=COPICK_TEMPLATE_PATH,
         )
 
