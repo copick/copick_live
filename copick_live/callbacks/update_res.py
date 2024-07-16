@@ -6,12 +6,12 @@ from collections import defaultdict
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import time
-from utils.copick_dataset import copick_dataset
-from utils.figure_utils import (
+from copick_live.utils.copick_dataset import copick_dataset
+from copick_live.utils.figure_utils import (
     blank_fig,
     draw_gallery
 )
-from utils.local_dataset import (
+from copick_live.utils.local_dataset import (
     local_dataset, 
     dirs, 
     dir2id, 
