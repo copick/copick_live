@@ -8,7 +8,7 @@ import io
 import base64
 import numpy as np
 
-from utils.copick_dataset import get_copick_dataset
+from copick_live.utils.copick_dataset import get_copick_dataset
 from functools import lru_cache 
 
 
