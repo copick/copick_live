@@ -117,7 +117,8 @@ class CopickDataset:
 
     def new_user_id(self, user_id=None):
         if user_id is not None:
-            self.root.config.user_id = user_id
+            config = get_config()
+            config.config["user_id"] = user_id
 
     def load_curr_point(self, point_id=None, obj_name=None):
         if point_id is not None and obj_name is not None:

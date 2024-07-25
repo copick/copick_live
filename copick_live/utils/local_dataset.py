@@ -49,7 +49,7 @@ class LocalDataset:
 
         xdata = []
         colors = dict()
-        for po in self.config_file["pickable_objects"]:
+        for po in config.get("pickable_objects", []):
             xdata.append(po["name"])
             colors[po["name"]] = po["color"]
 
@@ -62,9 +62,10 @@ class LocalDataset:
         self.proteins = defaultdict(int) 
         self._tomos_one_pick = set() #may remove some elems, thereofore, empty before each check
 
+        config = get_config()
         xdata = []
         colors = dict()
-        for po in self.config_file["pickable_objects"]:
+        for po in config.get("pickable_objects", []):
             xdata.append(po["name"])
             colors[po["name"]] = po["color"]
             

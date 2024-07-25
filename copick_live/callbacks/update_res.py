@@ -436,8 +436,9 @@ def download_json(n_clicks, input_value):
     input_value = '.'.join(input_value.split(' '))
     filename = 'copick_config_' + '_'.join(input_value.split('.')) + '.json'   
     copick_dataset = get_copick_dataset()
-    copick_dataset.root.config.user_id = input_value
-    return dict(content=json.dumps(copick_dataset.root.config.to_dict(), indent=4), filename=filename)
+    config = get_config()
+    config.config["user_id"] = input_value
+    return dict(content=json.dumps(config.config, indent=4), filename=filename)
 
 @callback(
     Output("download-txt", "data"),
@@ -445,6 +446,7 @@ def download_json(n_clicks, input_value):
     prevent_initial_call=True,
 )
 def download_txt(n_clicks):
+    config = get_config()
     counter_file_path = config.counter_file_path
     if counter_file_path:
         with open(counter_file_path) as f:
