@@ -4,22 +4,12 @@ from copick.impl.filesystem import CopickRootFSSpec
 from collections import defaultdict
 import pandas as pd
 import zarr
-
+from config import get_config
 
 class CopickDataset:
-    def __init__(
-        self, copick_config_path: str = None, copick_config_path_tomogram: str = None
-    ):
-        self.root = (
-            CopickRootFSSpec.from_file(copick_config_path)
-            if copick_config_path
-            else None
-        )
-        self.tomo_root = (
-            CopickRootFSSpec.from_file(copick_config_path_tomogram)
-            if copick_config_path_tomogram
-            else None
-        )
+    def __init__(self):
+        config = get_config()
+        self.root = CopickRootFSSpec.from_file(config.copick_config_path)
         self.tomogram = None
         self.run_name = None
         self.current_point = None  # current point index
@@ -255,41 +245,10 @@ class CopickDataset:
                 self.load_curr_point(point_id=point_id, obj_name=obj_name)
                 self.handle_assign(new_bj_name)
 
-
 copick_dataset = None
 
-
-def get_copick_dataset(config_path=None):
+def get_copick_dataset():
     global copick_dataset
-
-    if config_path or not copick_dataset:
-        config = configparser.ConfigParser()
-
-        if config_path:
-            config_path = os.path.abspath(config_path)
-        else:
-            config_path = os.path.join(os.getcwd(), "config.ini")
-
-        if os.path.exists(config_path):
-            config.read(config_path)
-        else:
-            raise FileNotFoundError(f"Config file not found at {config_path}")
-
-        COPICKLIVE_CONFIG_PATH = config.get(
-            "copicklive_config", "COPICKLIVE_CONFIG_PATH", fallback=None
-        )
-        COPICK_TEMPLATE_PATH = config.get(
-            "copick_template", "COPICK_TEMPLATE_PATH", fallback=None
-        )
-
-        if not COPICKLIVE_CONFIG_PATH or not COPICK_TEMPLATE_PATH:
-            raise ValueError(
-                "Config paths for CoPick are not provided and not found in the config file."
-            )
-
-        copick_dataset = CopickDataset(
-            copick_config_path=COPICK_TEMPLATE_PATH,
-            copick_config_path_tomogram=COPICK_TEMPLATE_PATH,
-        )
-
+    if copick_dataset is None:
+        copick_dataset = CopickDataset()
     return copick_dataset

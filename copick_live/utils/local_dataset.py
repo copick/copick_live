@@ -1,9 +1,10 @@
 import os, pathlib, time
 import threading 
-
+from config import get_config
+from copick.impl.filesystem import CopickRootFSSpec
 import random, json, copy, configparser
 from collections import defaultdict, deque
-import json, zarr
+import zarr
 
 
 dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1,100) for j in range(1,10)]
@@ -21,10 +22,10 @@ def threaded(fn):
 
 
 class LocalDataset:
-    def __init__(self, local_file_path: str=None, config_path: str=None):
-        self.root = local_file_path
-        with open(config_path) as f:
-            self.config_file = json.load(f)
+    def __init__(self):
+        config = get_config()
+        self.root = CopickRootFSSpec.from_file(config.copick_config_path)
+        self.counter_file_path = config.counter_file_path
         
         # output
         self.proteins = defaultdict(int) # {'ribosome': 38, ...}
@@ -178,40 +179,11 @@ class LocalDataset:
         image_dataset['colors'] = {k:'rgba'+str(tuple(v)) for k,v in image_dataset['colors'].items()}
         return image_dataset
 
+
 local_dataset = None
-COUNTER_FILE_PATH = None
 
-def get_local_dataset(config_path=None):
+def get_local_dataset():
     global local_dataset
-    global COUNTER_FILE_PATH
-
-    if config_path or not local_dataset:
-        config = configparser.ConfigParser()
-
-        if config_path:
-            config_path = os.path.abspath(config_path)
-        else:
-            config_path = os.path.join(os.getcwd(), "config.ini")
-
-        if os.path.exists(config_path):
-            config.read(config_path)
-        else:
-            raise FileNotFoundError(f"Config file not found at {config_path}")
-
-        LOCAL_FILE_PATH = config.get("local_picks", "PICK_FILE_PATH", fallback=None)
-        if LOCAL_FILE_PATH:
-            LOCAL_FILE_PATH = os.path.join(LOCAL_FILE_PATH, "ExperimentRuns/")
-        COPICK_TEMPLATE_PATH = config.get("copick_template", "COPICK_TEMPLATE_PATH", fallback=None)
-
-        if not LOCAL_FILE_PATH or not COPICK_TEMPLATE_PATH:
-            raise ValueError("Config paths for LocalDataset are not provided and not found in the config file.")
-
-        local_dataset = LocalDataset(local_file_path=LOCAL_FILE_PATH, config_path=COPICK_TEMPLATE_PATH)
-
-    if not COUNTER_FILE_PATH:
-        COUNTER_FILE_PATH = config.get("counter_checkpoint", "COUNTER_FILE_PATH", fallback=None)
-        if not COUNTER_FILE_PATH:
-            raise ValueError("Config path for COUNTER_FILE_PATH is not provided and not found in the config file.")
-
+    if local_dataset is None:
+        local_dataset = LocalDataset()
     return local_dataset
-

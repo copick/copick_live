@@ -1,0 +1,5 @@
+{
+    "copick_config_path": "copick_config.json",
+    "counter_file_path": "counter_checkpoint_file.json",
+    "cache_root": "copicklive_cache/"
+}

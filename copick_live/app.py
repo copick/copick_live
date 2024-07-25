@@ -11,8 +11,10 @@ from copick_live.components.annotators import layout as ranking
 from copick_live.components.composition import layout as composition
 from copick_live.components.popups import layout as popups
 
+from config import get_config
 
-def create_app():
+def create_app(config_path=None):
+    config = get_config(config_path)
     external_stylesheets = [
         dbc.themes.BOOTSTRAP,
         "assets/header-style.css",
