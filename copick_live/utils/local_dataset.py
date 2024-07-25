@@ -34,7 +34,7 @@ class LocalDataset:
         self.tomos_pickers = defaultdict(set)   #{'Test_1_1': {john.doe,...}, ...}
         self.num_per_person_ordered = dict() # {'Tom':5, 'Julie':3, ...}
         
-        # hidden variables for updating candidate recomendations 
+        # hidden variables for updating candidate recommendations 
         self._all = set([i for i in range(len(dirs))])
         self._tomos_done = set()   # labeled at least by 2 people, {0, 1, 2}
         self._tomos_one_pick = set() # labeled only by 1 person, {3,4,5,...} 
@@ -60,7 +60,7 @@ class LocalDataset:
 
     def _reset(self):
         self.proteins = defaultdict(int) 
-        self._tomos_one_pick = set() #may remove some elems, thereofore, empty before each check
+        self._tomos_one_pick = set() #may remove some elems, therefore, empty before each check
 
         config = get_config()
         xdata = []
@@ -81,49 +81,28 @@ class LocalDataset:
 
     
     @threaded
-    def _walk_dir(self, args):
-        r, s, e = args
-        for dir in dirs[s:e]:
-            dir_path = r + dir +'/Picks'
-            if os.path.exists(dir_path):
-                for json_file in pathlib.Path(dir_path).glob('*.json'):
-                    try:
-                        contents = json.load(open(json_file))
-                        if 'user_id' in contents and contents['user_id'] not in self._prepicks:
-                            if 'pickable_object_name' in contents and \
-                            'run_name' in contents and contents['run_name'] in dir_set and \
-                            'points' in contents and contents['points'] and len(contents['points']):
-                                    self.proteins[contents['pickable_object_name']] += len(contents['points'])
-                                    self.tomos_per_person[contents['user_id']].add(contents['run_name'])
-                                    self.tomograms[contents['run_name']].add(contents['pickable_object_name']) 
-                                    self.tomos_pickers[contents['run_name']].add(contents['user_id'])
-                    except: 
-                        pass
-                        
+    def _process_run(self, run):
+        for pick_set in run.get_picks():
+            contents = pick_set.to_dict()
+            if 'user_id' in contents and contents['user_id'] not in self._prepicks:
+                if 'pickable_object_name' in contents and \
+                'run_name' in contents and contents['run_name'] in dir_set and \
+                'points' in contents and contents['points'] and len(contents['points']):
+                        self.proteins[contents['pickable_object_name']] += len(contents['points'])
+                        self.tomos_per_person[contents['user_id']].add(contents['run_name'])
+                        self.tomograms[contents['run_name']].add(contents['pickable_object_name']) 
+                        self.tomos_pickers[contents['run_name']].add(contents['user_id'])
 
     def _update_tomo_sts(self):
         start = time.time() 
-        seg = round(len(dirs)/6)
-        args1 = (self.root, 0, seg)
-        args2 = (self.root, seg, seg*2)
-        args3 = (self.root, seg*2, seg*3)
-        args4 = (self.root, seg*3, seg*4)
-        args5 = (self.root, seg*4, seg*5)
-        args6 = (self.root, seg*5, len(dirs))
+        threads = []
+        for run in self.root.runs:
+            t = self._process_run(run)
+            threads.append(t)
 
-        t1 = self._walk_dir(args1)
-        t2 = self._walk_dir(args2)
-        t3 = self._walk_dir(args3)
-        t4 = self._walk_dir(args4)
-        t5 = self._walk_dir(args5)
-        t6 = self._walk_dir(args6)
-
-        t1.join()
-        t2.join()
-        t3.join()
-        t4.join()
-        t5.join()
-        t6.join()
+        for t in threads:
+            t.join()
+        
         print(f'{time.time()-start} s to check all files')
         
         for tomo,pickers in self.tomos_pickers.items():
