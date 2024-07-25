@@ -11,13 +11,8 @@ from copick_live.utils.figure_utils import (
     blank_fig,
     draw_gallery
 )
-from copick_live.utils.local_dataset import (
-    get_local_dataset, 
-    dirs, 
-    dir2id, 
-    COUNTER_FILE_PATH, 
-    #CACHE_ROOT,
-)
+from copick_live.utils.local_dataset import get_local_dataset
+from copick_live.config import get_config
 from dash import (
     html,
     Input,
@@ -32,15 +27,13 @@ from dash import (
 )
 from dash.exceptions import PreventUpdate
 
-
 from dash_iconify import DashIconify
 import base64
 
-
+config = get_config()
 
 def submission_list(i,j):
     return  dbc.ListGroupItem("{}:      {}".format(i.split('.json')[0], j))
-
 
 import io
 def parse_contents(contents, filename, date):
@@ -55,7 +48,6 @@ def parse_contents(contents, filename, date):
             df = df.sort_values(by=['Aggregate_Fbeta'], ascending=False)
             df = df.reset_index(drop=True)
             df['rank'] = df.index
-            #df = df[['File', 'Aggregate_Fbeta']]
             dict_df = df.set_index('File')['Aggregate_Fbeta'].to_dict()
             print(dict_df)
             fig = px.scatter(df, x='rank', y='Aggregate_Fbeta', hover_name='File', title='Submitted model ranking')
@@ -81,20 +73,16 @@ def parse_contents(contents, filename, date):
             style={"height": '87vh'}
             )
 
-
-
 # 1st update of the internal states
 get_local_dataset().refresh()
 
 #Scheduler
 scheduler = BackgroundScheduler() # in-memory job stores
-scheduler.add_job(func=get_local_dataset().refresh, trigger='interval', seconds=20)  # interval should be larger than the time it takes to refresh, o.w. it will be report incomplete stats.
+scheduler.add_job(func=get_local_dataset().refresh, trigger='interval', seconds=20)
 scheduler.start()
-
 
 roundbutton = {
     "border": 'transparent',
-    #"border-radius": "100%",
     "padding": 0,
     "backgroundColor": 'transparent',
     "color": "black",
@@ -107,14 +95,11 @@ roundbutton = {
     "margin-top": 8,
 }
 
-
-
 def candidate_list(i, j):
-    return  dbc.ListGroupItem("{} (labeled by {} person)".format(dirs[i], j))
+    return  dbc.ListGroupItem("{} (labeled by {} person)".format(i, j))
 
 def ranking_list(i, j):
     return  dbc.ListGroupItem("{} {} tomograms".format(i, j))
-
 
 
 ############################################## Callbacks ##############################################
@@ -441,9 +426,6 @@ def deselect(select_clicks, unselect_clicks, thumb_clicked):
         return [1 for thumb in thumb_clicked]
 
 
-
-
-
 @callback(
     Output("download-json", "data"),
     Input("btn-download", "n_clicks"),
@@ -453,20 +435,19 @@ def deselect(select_clicks, unselect_clicks, thumb_clicked):
 def download_json(n_clicks, input_value):
     input_value = '.'.join(input_value.split(' '))
     filename = 'copick_config_' + '_'.join(input_value.split('.')) + '.json'   
-    get_local_dataset().config_file["user_id"] = input_value
-    return dict(content=json.dumps(get_local_dataset().config_file, indent=4), filename=filename)
-
+    copick_dataset = get_copick_dataset()
+    copick_dataset.root.config.user_id = input_value
+    return dict(content=json.dumps(copick_dataset.root.config.to_dict(), indent=4), filename=filename)
 
 @callback(
     Output("download-txt", "data"),
     Input("btn-download-txt", "n_clicks"),
-    #State("username", "value"),
     prevent_initial_call=True,
 )
 def download_txt(n_clicks):
-    print(f'COUNTER_FILE_PATH 0 {COUNTER_FILE_PATH}')
-    if COUNTER_FILE_PATH:
-        with open(COUNTER_FILE_PATH) as f:
+    counter_file_path = config.counter_file_path
+    if counter_file_path:
+        with open(counter_file_path) as f:
             counter = json.load(f)
         
         if counter['repeat'] == 2:
@@ -474,15 +455,15 @@ def download_txt(n_clicks):
             counter['repeat'] = 0
 
         counter['repeat'] += 1
-        task_contents = '\n'.join(dirs[counter['start']:counter['start']+counter['tasks_per_person']])
+        local_dataset = get_local_dataset()
+        task_contents = '\n'.join(local_dataset.dirs[counter['start']:counter['start']+counter['tasks_per_person']])
         print(task_contents)
         task_filename = 'task_recommendation.txt' 
 
-        with open(COUNTER_FILE_PATH, 'w') as f:
+        with open(counter_file_path, 'w') as f:
             f.write(json.dumps(counter, indent=4))   
         
         return dict(content=task_contents, filename=task_filename)
-
 
 @callback(
     Output('proteins-histogram', 'figure'),

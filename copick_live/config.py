@@ -15,6 +15,8 @@ class Config:
         self.copick_config_path = self.config.get("copick_config_path")
         self.counter_file_path = self.config.get("counter_file_path")
         self.cache_root = self.config.get("cache_root")
+        self.album_mode = self.config.get("album_mode")
+        self.copick_live_version = self.config.get("copick_live_version")
         
     def get(self, key, default=None):
         return self.config.get(key, default)
