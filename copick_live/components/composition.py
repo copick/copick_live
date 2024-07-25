@@ -1,6 +1,6 @@
 import dash_bootstrap_components as dbc
 from dash_iconify import DashIconify
-from dash import html
+from dash import html, dcc
 
 
 roundbutton = {
@@ -24,25 +24,19 @@ def layout():
                             'Evaluation',
                             dbc.Button('Refresh List', 
                                         id="refresh-button", 
-                                        #outline=True, 
                                         color="primary",  
                                         style = {"text-transform": "none", "fontSize": "0.85em", "width": "25%","height": "85%", "margin-left": "40%"},
                                     )
                             ], 
                             style={"font-weight": "bold"}
                         ),
-                        #dbc.Row(dbc.Button('Refresh', id="refresh-button", outline=True, color="primary", className="me-1", size="sm"), justify="center"),
                         dbc.CardBody(id='card-tomogram-evaluation', 
                                      children=[
-                                        #   html.Div(dbc.Button('Refresh List', 
-                                        #                 id="refresh-button", 
-                                        #                 outline=True, 
-                                        #                 color="primary", 
-                                        #                 className="me-1",  
-                                        #                 style = {"text-transform": "none"}),
-                                        #             style ={'display': 'flex', 'justify-content': 'center', 'margin': '3px'},
-                                        #         ),
-                                         html.Div(id='composition')
+                                         dcc.Loading(
+                                             id="loading-composition",
+                                             children=[html.Div(id='composition')],
+                                             type="default",
+                                         )
                                      ], 
                                      style={'overflowY': 'scroll'}
                                 ),

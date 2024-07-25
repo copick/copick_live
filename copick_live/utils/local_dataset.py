@@ -1,25 +1,10 @@
-import os, pathlib, time
-import threading 
+import os, time
 from copick_live.config import get_config
 from copick.impl.filesystem import CopickRootFSSpec
-import random, json, copy, configparser
+import random, copy
 from collections import defaultdict, deque
-import zarr
-
-
-dirs = ['TS_'+str(i)+'_'+str(j) for i in range(1,100) for j in range(1,10)]
-dir2id = {j:i for i,j in enumerate(dirs)}
-dir_set = set(dirs)
-
-
-# define a wrapper function
-def threaded(fn):
-    def wrapper(*args, **kwargs):
-        thread = threading.Thread(target=fn, args=args, kwargs=kwargs)
-        thread.start()
-        return thread
-    return wrapper
-
+import json
+import concurrent
 
 class LocalDataset:
     def __init__(self):
@@ -35,9 +20,9 @@ class LocalDataset:
         self.num_per_person_ordered = dict() # {'Tom':5, 'Julie':3, ...}
         
         # hidden variables for updating candidate recommendations 
-        self._all = set([i for i in range(len(dirs))])
-        self._tomos_done = set()   # labeled at least by 2 people, {0, 1, 2}
-        self._tomos_one_pick = set() # labeled only by 1 person, {3,4,5,...} 
+        self._all = set()
+        self._tomos_done = set()   # labeled at least by 2 people
+        self._tomos_one_pick = set() # labeled only by 1 person
         self._candidate_dict = defaultdict() # {1:1, 2:0, ...}
         self._prepicks = set(['slab-picking', 
                              'pytom-template-match', 
@@ -80,36 +65,41 @@ class LocalDataset:
         self._update_tomo_sts()
 
     
-    @threaded
     def _process_run(self, run):
         for pick_set in run.get_picks():
-            contents = pick_set.to_dict()
-            if 'user_id' in contents and contents['user_id'] not in self._prepicks:
-                if 'pickable_object_name' in contents and \
-                'run_name' in contents and contents['run_name'] in dir_set and \
-                'points' in contents and contents['points'] and len(contents['points']):
-                        self.proteins[contents['pickable_object_name']] += len(contents['points'])
-                        self.tomos_per_person[contents['user_id']].add(contents['run_name'])
-                        self.tomograms[contents['run_name']].add(contents['pickable_object_name']) 
-                        self.tomos_pickers[contents['run_name']].add(contents['user_id'])
+            try:
+                pickable_object_name = pick_set.pickable_object_name
+                user_id = pick_set.user_id
+                run_name = run.name
+                points = pick_set.points
+
+                if user_id not in self._prepicks and points and len(points):
+                    self.proteins[pickable_object_name] += len(points)
+                    self.tomos_per_person[user_id].add(run_name)
+                    self.tomograms[run_name].add(pickable_object_name)
+                    self.tomos_pickers[run_name].add(user_id)
+            except json.JSONDecodeError:
+                print(f"Error decoding JSON for pick set in run {run.name}")
+            except Exception as e:
+                print(f"Unexpected error processing run {run.name}: {e}")
 
     def _update_tomo_sts(self):
         start = time.time() 
-        threads = []
-        for run in self.root.runs:
-            t = self._process_run(run)
-            threads.append(t)
-
-        for t in threads:
-            t.join()
+        runs = self.root.runs
+        self._all = set(range(len(runs)))
+        
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor.map(self._process_run, runs)
         
         print(f'{time.time()-start} s to check all files')
         
-        for tomo,pickers in self.tomos_pickers.items():
-            if len(pickers) >= 2:
-                self._tomos_done.add(dir2id[tomo])
-            elif len(pickers) == 1:
-                self._tomos_one_pick.add(dir2id[tomo])
+        for tomo, pickers in self.tomos_pickers.items():
+            run_id = next((i for i, run in enumerate(runs) if run.name == tomo), None)
+            if run_id is not None:
+                if len(pickers) >= 2:
+                    self._tomos_done.add(run_id)
+                elif len(pickers) == 1:
+                    self._tomos_one_pick.add(run_id)
 
         self.num_per_person_ordered = dict(sorted(self.tomos_per_person.items(), key=lambda item: len(item[1]), reverse=True))
 
@@ -136,7 +126,7 @@ class LocalDataset:
             residuals = deque(residuals)     
             while residuals and len(self._candidate_dict) < n:
                 if random_sampling:
-                    new_id = random.randint(0,len(residuals))
+                    new_id = random.randint(0, len(residuals) - 1)
                     self._candidate_dict[residuals[new_id]] = 0
                     del residuals[new_id]       
                 else:
@@ -145,7 +135,7 @@ class LocalDataset:
         
 
     def candidates(self, n: int, random_sampling=True) -> dict:
-        self._candidate_dict = {k:0 for k in range(n)} if not random_sampling else {k:0 for k in random.sample(range(len(dirs)), n)}
+        self._candidate_dict = {k: 0 for k in range(n)} if not random_sampling else {k: 0 for k in random.sample(range(len(self.root.runs)), n)}
         self._update_candidates(n, random_sampling) 
         return {k: v for k, v in sorted(self._candidate_dict.items(), key=lambda x: x[1], reverse=True)}
     
@@ -156,7 +146,7 @@ class LocalDataset:
         for name in image_dataset['name']:
             image_dataset['count'].append(proteins[name])
                          
-        image_dataset['colors'] = {k:'rgba'+str(tuple(v)) for k,v in image_dataset['colors'].items()}
+        image_dataset['colors'] = {k: 'rgba' + str(tuple(v)) for k, v in image_dataset['colors'].items()}
         return image_dataset
 
 

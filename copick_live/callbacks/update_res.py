@@ -15,16 +15,10 @@ from dash.exceptions import PreventUpdate
 
 from dash_iconify import DashIconify
 import base64
-
-config = get_config()
-
+import io
 
 def submission_list(i, j):
     return dbc.ListGroupItem("{}:      {}".format(i.split(".json")[0], j))
-
-
-import io
-
 
 def parse_contents(contents, filename, date):
     content_type, content_string = contents.split(",")
@@ -75,15 +69,6 @@ def parse_contents(contents, filename, date):
         style={"height": "87vh"},
     )
 
-
-# 1st update of the internal states
-get_local_dataset().refresh()
-
-# Scheduler
-scheduler = BackgroundScheduler()  # in-memory job stores
-scheduler.add_job(func=get_local_dataset().refresh, trigger="interval", seconds=20)
-scheduler.start()
-
 roundbutton = {
     "border": "transparent",
     "padding": 0,
@@ -98,14 +83,11 @@ roundbutton = {
     "margin-top": 8,
 }
 
-
 def candidate_list(i, j):
     return dbc.ListGroupItem("{} (labeled by {} person)".format(i, j))
 
-
 def ranking_list(i, j):
     return dbc.ListGroupItem("{} {} tomograms".format(i, j))
-
 
 ############################################## Callbacks ##############################################
 @callback(
@@ -356,7 +338,9 @@ def update_analysis(
                 half_width = crop_width // 2
                 if crop_avg is None:
                     crop_avg = 0
+                copick_dataset = get_copick_dataset()  # Get the dataset here
                 fig2 = draw_gallery(
+                    copick_dataset,  # Pass the dataset
                     run=tomogram_index,
                     particle=particle,
                     positions=positions,
@@ -618,20 +602,21 @@ def download_txt(n_clicks):
     Input("interval-component", "n_intervals"),
 )
 def update_results(n):
-    data = get_local_dataset().fig_data()
+    local_dataset = get_local_dataset()
+    data = local_dataset.fig_data()
     fig = px.bar(x=data['name'], 
-                 y=data['count'],  # Make sure 'count' exists in data
+                 y=data['count'],
                  labels={'x': 'Objects', 'y':'Counts'}, 
                  text_auto=True,
                  color=data['name'],
                  color_discrete_map=data['colors'],
                 )
     fig.update(layout_showlegend=False)
-    num_candidates = 100# len(dirs) if len(dirs) < 100 else 100
-    candidates = get_local_dataset().candidates(num_candidates, random_sampling=False)
-    num_per_person_ordered = get_local_dataset().num_per_person_ordered
-    label = f"Labeled {len(get_local_dataset().tomos_pickers)} out of 1000 tomograms"
-    bar_val = round(len(get_local_dataset().tomos_pickers) / 1000 * 100, 1)
+    num_candidates = 100
+    candidates = local_dataset.candidates(num_candidates, random_sampling=False)
+    num_per_person_ordered = local_dataset.num_per_person_ordered
+    label = f"Labeled {len(local_dataset.tomos_pickers)} out of 1000 tomograms"
+    bar_val = round(len(local_dataset.tomos_pickers) / 1000 * 100, 1)
 
     return (
         fig,
@@ -650,13 +635,13 @@ def update_results(n):
 
 @callback(
     Output("composition", "children"),
-    # Input('interval-component', 'n_intervals'),
     Input("refresh-button", "n_clicks"),
 )
 def update_compositions(n):
+    local_dataset = get_local_dataset()
     progress_list = []
     composition_list = html.Div()
-    data = get_local_dataset().fig_data()
+    data = local_dataset.fig_data()
     if len(data['colors']) > 0:
         l = 1/len(data['colors'])*100
     else:
@@ -665,7 +650,7 @@ def update_compositions(n):
     tomograms = {
         k: v
         for k, v in sorted(
-            get_local_dataset().tomograms.items(), key=lambda x: dir2id[x[0]]
+            local_dataset.tomograms.items(), key=lambda x: dir2id[x[0]]
         )
     }
     for tomogram, ps in tomograms.items():
@@ -689,3 +674,16 @@ def update_compositions(n):
 
     composition_list = dbc.ListGroup(progress_list)
     return composition_list
+
+
+# Initialize scheduler function
+def init_scheduler():
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(func=get_local_dataset().refresh, trigger="interval", seconds=20)
+    scheduler.start()
+
+    
+# This function can be called when the app starts
+def initialize_app():
+    get_local_dataset().refresh()
+    init_scheduler()

@@ -3,6 +3,7 @@ from copick.impl.filesystem import CopickRootFSSpec
 from collections import defaultdict
 import pandas as pd
 import zarr
+import threading
 from copick_live.config import get_config
 
 class CopickDataset:
@@ -36,6 +37,8 @@ class CopickDataset:
         self._logs = defaultdict(
             list
         )  # {'user_id':[], 'x': [], 'y':[], 'z':[], 'operation':['reject', 'accept', 'reassign'], 'start_class':[], 'end_class'[]}
+        self.tomogram_lock = threading.Lock()
+        self.tomogram_loaded = threading.Event()        
 
     def _reset_states(self):
         self.points_per_obj = defaultdict(list)
@@ -53,47 +56,25 @@ class CopickDataset:
             self._reset_states()
             self.run_name = run_name
             self.run = self.root.get_run(self.run_name)
-            _run = (
-                self.tomo_root.get_run(self.run_name)
-                if self.tomo_root is not None
-                else self.run
-            )
-            for pick in self.run.picks:
-                for point in pick.points:
-                    # all picks from indivial pickers to show in tab1, contain duplicated picks.
-                    self.dt["pickable_object_name"].append(pick.pickable_object_name)
-                    self.dt["user_id"].append(pick.user_id)
-                    self.dt["x"].append(float(point.location.x) / 10)
-                    self.dt["y"].append(float(point.location.y) / 10)
-                    self.dt["z"].append(float(point.location.z) / 10)
-                    self.dt["size"].append(0.1)
-                    if (
-                        point.location.x,
-                        point.location.y,
-                        point.location.z,
-                    ) not in self.all_points_locations:
-                        self.points_per_obj[pick.pickable_object_name].append(
-                            (len(self.all_points), point.score)
-                        )
-                        self._point_types.append(pick.pickable_object_name)
-                        self.all_points.append(point)
-                        self.all_points_locations.add(
-                            (point.location.x, point.location.y, point.location.z)
-                        )
+            
+            # Start loading tomogram in a separate thread
+            threading.Thread(target=self._load_tomogram, args=(run_name,)).start()
 
-            self.picked_points_mask = [0] * len(self.all_points)
+            # Load other data
+            self._load_points()
+            
             if sort_by_score:
-                for k, values in self.points_per_obj.items():
-                    if len(values):
-                        values.sort(
-                            key=lambda x: x[1], reverse=reverse
-                        )  # reverse=Fasle, ascending order
+                self._sort_points(reverse)
 
+
+    def _load_tomogram(self, run_name):
+        with self.tomogram_lock:
+            _run = self.tomo_root.get_run(run_name) if self.tomo_root is not None else self.run
             tomogram = _run.get_voxel_spacing(10).get_tomogram("denoised")
-            # Access the data
             group = zarr.open(tomogram.zarr())
-            _, array = list(group.arrays())[0]  # highest resolution bin=0
+            _, array = list(group.arrays())[0]
             self.tomogram = array[:]
+        self.tomogram_loaded.set()                
 
     def _store_points(self, obj_name=None, session_id="18"):
         if obj_name is not None:
