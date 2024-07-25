@@ -1,6 +1,6 @@
 import os, pathlib, time
 import threading 
-from config import get_config
+from copick_live.config import get_config
 from copick.impl.filesystem import CopickRootFSSpec
 import random, json, copy, configparser
 from collections import defaultdict, deque

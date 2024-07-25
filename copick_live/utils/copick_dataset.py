@@ -1,10 +1,9 @@
 import os
-import configparser
 from copick.impl.filesystem import CopickRootFSSpec
 from collections import defaultdict
 import pandas as pd
 import zarr
-from config import get_config
+from copick_live.config import get_config
 
 class CopickDataset:
     def __init__(self):
