@@ -1,4 +1,4 @@
-from dash import dcc
+from dash import dcc, html
 import dash_bootstrap_components as dbc
 from dash_iconify import DashIconify
 
@@ -10,7 +10,13 @@ def layout():
                 ], 
                 style={"font-weight": "bold"}
                 ),
-                dbc.CardBody([dcc.Graph(id='proteins-histogram')])
+                dbc.CardBody([
+                    dcc.Loading(
+                        id="loading-proteins-histogram",
+                        children=[dcc.Graph(id='proteins-histogram')],
+                        type="default",
+                    )
+                ])
             ],
             style={"height": '87vh'}
             )
